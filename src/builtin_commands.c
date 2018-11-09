@@ -1,9 +1,10 @@
 //
 // Created by ZIWEIWU on 2018-11-08.
 //
+
 #include "builtin_commands.h"
 
-void cd_command(char *path) {
+void cd_command(char* path) {
   int ret;
 
   printf("cd to %s\n", path);
@@ -20,4 +21,7 @@ void cd_command(char *path) {
 
 void status_command() { printf("Here are the status\n"); }
 
-void exit_command() { printf("Smallsh is exiting\n"); }
+void exit_command() {
+  printf("Smallsh is exiting\n");
+  exit(0);
+}
