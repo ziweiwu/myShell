@@ -11,5 +11,6 @@
 #include <unistd.h>
 
 void catch_SIGTERM(int);
+void catch_SIGCHLD(int);
 
 #endif //PROJECT_SIGNAL_CATCHERS_H

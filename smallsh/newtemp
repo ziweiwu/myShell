@@ -1,0 +1,18 @@
+The command you enter is: sort (null) 
+Parent(9650): waiting for child(9651) to terminate
+1
+2
+3
+4
+Parent(9650): Child(9651) terminated, Exiting!
+: You entered 
+The command you enter is:  (null) 
+Parent(9650): waiting for child(9652) to terminate
+Parent(9650): Child(9652) terminated, Exiting!
+: You entered 
+The command you enter is:  (null) 
+Parent(9650): waiting for child(9653) to terminate
+Parent(9650): Child(9653) terminated, Exiting!
+: You entered 
+The command you enter is:  (null) 
+Parent(9650): waiting for child(9654) to terminate
