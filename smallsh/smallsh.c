@@ -50,20 +50,32 @@ void smallsh() {
     char *output_file = 0;
 
     // save current standard input and standard out
-    write(1, ": ", 2);
+    printf(": ");
     // need to flush out unused output buffer before input
     fflush(stdout);
 
     char buffer[MAX_COMMAND_LENGTH];
-    memset(buffer, '\0', MAX_COMMAND_LENGTH);
-    int n = read(STDOUT_FILENO, buffer, sizeof(buffer));
-    char *path_ptr = strchr(buffer, '\n');
-    if (path_ptr != NULL) {
-      *path_ptr = '\0';
+    char * buffer_ptr = buffer; 
+    size_t buffer_len = MAX_COMMAND_LENGTH;
+    memset(buffer, '\0', buffer_len);
+    /*int n = read(STDOUT_FILENO, buffer, sizeof(buffer));*/
+    
+    int n = getline(&buffer_ptr, &buffer_len, stdin);
+    buffer[strlen(buffer)-1]='\0';
+
+    /*printf("You entered %d characters\n", n);*/
+    /*printf("You entered %s\n", buffer);*/
+    /*fflush(stdout);*/
+
+    // detect empty line or blank line 
+    if(strlen(buffer)==0 || is_blank_line(buffer,n)){
+      continue;
     }
-    printf("You entered %d characters\n", n);
-    printf("You entered %s\n", buffer);
-    fflush(stdout);
+
+    // detect comment line
+    if(buffer[0]=='#'){
+      continue;
+    } 
 
     // if user uses cd
     if (strstr(buffer, "cd") != NULL) {
@@ -149,6 +161,18 @@ void smallsh() {
       // fork a child process for exec the command
       spawnPid = fork();
 
+
+      // fork failed
+      if (spawnPid == -1) {
+
+        perror("Error forking\n");
+        exit(1);
+      }
+
+      // in child process
+      else if (spawnPid == 0) {
+
+
       // setup redirect input
       if (redirect_input) {
         printf("openning %s\n", input_file);
@@ -207,15 +231,8 @@ void smallsh() {
         }
       }
 
-      // fork failed
-      if (spawnPid == -1) {
 
-        perror("Error forking\n");
-        exit(1);
-      }
-
-      // in child process
-      else if (spawnPid == 0) {
+        
         execvp(commands[0], commands);
         perror("Child: exec failure!\n");
         printf("%s failed", commands[0]);
@@ -245,3 +262,13 @@ void smallsh() {
   }
 }
 
+
+int is_blank_line(char* buffer, int len){
+  int i;
+  for(i =0 ; i < len - 1; i++){
+    if(!isspace(buffer[i])){
+      return 0;
+    }
+  }
+  return 1;
+}

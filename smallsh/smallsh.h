@@ -18,7 +18,7 @@
 #define MAX_COMMAND_LENGTH 2050
 #define MAX_NUM_ARGS 512
 
-void if_used_builtin_commands(char *buffer);
+int is_blank_line(char *, int);
 void smallsh();
 
 #endif  // PROJECT_SMALLSH_H
