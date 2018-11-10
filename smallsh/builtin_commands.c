@@ -7,7 +7,7 @@ void cd_command(char* path) {
   int ret;
 
   // if cd has no argument, cd to home directory
-  if (*path == NULL) {
+  if (*path == 0) {
     printf("cd to %s\n", getenv("HOME"));
     ret = chdir(getenv("HOME"));
   } else {

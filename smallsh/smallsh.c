@@ -11,8 +11,8 @@ void smallsh() {
 
   // set up an array to save child process PID
   pid_t child_pid_array[1000];
+
   int i, child_count = 0;
-  int redirect_input, redirect_output = 0;
 
   // set up signals
   struct sigaction SIGINT_action = {0}, SIGTERM_action = {0},
@@ -40,11 +40,16 @@ void smallsh() {
     /*fflush(stdout);*/
     /*}*/
 
-    // save current standard input and standard out
-    int regular_stdout, regular_stdin; 
-    regular_stdin = dup(0);
-    
+    // flags
+    int is_background_process = 0;
+    int  redirect_input = 0;
+    int  redirect_output = 0;
 
+    // input file and output file
+    char *input_file = 0;
+    char *output_file = 0;
+
+    // save current standard input and standard out
     write(1, ": ", 2);
     // need to flush out unused output buffer before input
     fflush(stdout);
@@ -88,14 +93,14 @@ void smallsh() {
       char *commands[MAX_NUM_ARGS];
       int count = 0;
 
-      // initialize commands array 
-      for(i = 0; i < MAX_NUM_ARGS; i++){
+      // initialize commands array
+      for (i = 0; i < MAX_NUM_ARGS; i++) {
         commands[i] = NULL;
       }
 
       // parse command and arguments
       while (p != NULL) {
-        // expand shell pid if receive $$
+        // receive $$, need expand pid 
         if (strcmp(p, "$$") == 0) {
           char shell_pid_buffer[sizeof(shell_pid) * 4 + 1];
           memset(shell_pid_buffer, '\0', sizeof(shell_pid) * 4 + 1);
@@ -103,44 +108,32 @@ void smallsh() {
           commands[count++] = shell_pid_buffer;
         }
 
-        // redirect input if receive <
+        // receive <
         else if (strcmp(p, "<") == 0) {
           p = strtok(NULL, " ");
+          input_file = p;
+          redirect_input = 1;
           printf("input target is %s\n", p);
-          sourceFD = open(p, O_RDONLY);
+          fflush(stdout);
 
-          fcntl(sourceFD, F_SETFD, FD_CLOEXEC);
-
-          if (sourceFD == -1) {
-            perror("failed to open source file");
-            exit(1);
-          }
-
-          if (dup2(sourceFD, 0) == -1) {
-            perror("Unable to redirect source file");
-            exit(1);
-          }
         }
 
-        // redict output if receive >
+        // receive >
         else if (strcmp(p, ">") == 0) {
           p = strtok(NULL, " ");
+          output_file = p;
+          redirect_output=1;
           printf("output target is %s\n", p);
-          targetFD = open(p, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+          fflush(stdout);
+        }
 
-          fcntl(targetFD, F_SETFD, FD_CLOEXEC);
+        // receive &
+        else if (strcmp(p, "&") == 0) {
+          is_background_process = 1;
+        }
 
-          if (targetFD == -1) {
-            perror("failed to open target file");
-            exit(1);
-          }
-
-          if (dup2(targetFD, 1) == -1) {
-            perror("Unable to redirect source file");
-            exit(1);
-          }
-
-        } else {
+        // if current command pointer is not pecial symbols
+        else {
           commands[count++] = p;
         }
         // move string pointer forward
@@ -156,29 +149,97 @@ void smallsh() {
       // fork a child process for exec the command
       spawnPid = fork();
 
+      // setup redirect input
+      if (redirect_input) {
+        printf("openning %s\n", input_file);
+        sourceFD = open(input_file, O_RDONLY);
+        if (sourceFD == -1) {
+          perror("failed to open source file");
+          exit(1);
+        }
+        if (dup2(sourceFD, STDIN_FILENO) == -1) {
+          perror("Unable to redirect source file");
+          exit(1);
+        }
+      }
+
+      // setup redirect output
+      if (redirect_output) {
+        printf("openning %s\n", output_file);
+        targetFD = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (targetFD == -1) {
+          perror("failed to open target file");
+          exit(1);
+        }
+        if (dup2(targetFD, STDOUT_FILENO) == -1) {
+          perror("Unable to redirect source file");
+          exit(1);
+        }
+      }
+
+      // if background child process does not redirect input
+      if (is_background_process && !redirect_input) {
+        int dev_NULL = open("/dev/null", O_WRONLY);
+
+        if (dev_NULL == -1) {
+          perror("failed to open dev/null");
+          exit(1);
+        }
+
+        if (dup2(dev_NULL, STDIN_FILENO) == -1) {
+          perror("Unable to redirect input to dev/null");
+          exit(1);
+        }
+      }
+
+      // if background child process does not redirect output
+      if (is_background_process && !redirect_output) {
+        int dev_NULL = open("/dev/null", O_WRONLY);
+
+        if (dev_NULL == -1) {
+          perror("failed to open dev/null");
+          exit(1);
+        }
+
+        if (dup2(dev_NULL, STDOUT_FILENO) == -1) {
+          perror("Unable to redirect output to dev/null");
+          exit(1);
+        }
+      }
+
+      // fork failed
       if (spawnPid == -1) {
-        // fork failed
 
         perror("Error forking\n");
         exit(1);
-      } else if (spawnPid == 0) {
-        // fork success, in child
+      }
+
+      // in child process
+      else if (spawnPid == 0) {
         execvp(commands[0], commands);
         perror("Child: exec failure!\n");
         printf("%s failed", commands[0]);
+        fflush(stdout);
         exit(1);
-      } else {
+      }
 
-        // in parent
+      // in parent process
+      else {
+        // if child process is background
+        if (is_background_process) {
+          child_pid_array[child_count++] = spawnPid;
+          printf("background pid is %d\n", spawnPid);
+          fflush(stdout);
+        }
 
-        /*printf("Parent(%d): waiting for child(%d) to terminate\n", getpid(),*/
-               /*spawnPid);*/
-        sleep(1);
-        pid_t actualPid = waitpid(spawnPid, &childExitStatus, 0);
-        child_pid_array[child_count] = actualPid;
-        child_count++;
-        printf("Parent(%d): Child(%d) terminated, Exiting!\n", getpid(),
-               actualPid);
+        // child process is foreground
+        else {
+          sleep(1);
+          pid_t actualPid = waitpid(spawnPid, &childExitStatus, 0);
+          printf("Parent(%d): Child(%d) terminated, Exiting!\n", getpid(),
+                 actualPid);
+          fflush(stdout);
+        }
       }
     }
   }
