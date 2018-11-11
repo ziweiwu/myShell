@@ -3,6 +3,9 @@
 //
 #include "smallsh.h"
 
+// global flag for foreground mode
+int foreground_only_mode_on = 0;
+
 void smallsh() {
   /*printf("Smallsh running\n");*/
 
@@ -40,7 +43,6 @@ void smallsh() {
 
     // flags
     int is_background_process = 0;
-    int foreground_mode_on = 0;
     int redirect_input = 0;
     int redirect_output = 0;
 
@@ -176,7 +178,7 @@ void smallsh() {
         sigaction(SIGTSTP, &ignore_action, NULL);
         
         // set foreground process to catch SIGINT
-        if (!is_background_process) {
+        if (!is_background_process || foreground_only_mode_on) {
           sigaction(SIGINT, &SIGINT_action, NULL);
         }
 
@@ -215,7 +217,7 @@ void smallsh() {
         }
 
         // if background child process does not redirect input
-        if (is_background_process && !redirect_input) {
+        if (!foreground_only_mode_on&&is_background_process && !redirect_input) {
           int dev_NULL = open("/dev/null", O_WRONLY);
 
           if (dev_NULL == -1) {
@@ -230,7 +232,7 @@ void smallsh() {
         }
 
         // if background child process does not redirect output
-        if (is_background_process && !redirect_output) {
+        if (!foreground_only_mode_on&&is_background_process && !redirect_output) {
           int dev_NULL = open("/dev/null", O_WRONLY);
 
           if (dev_NULL == -1) {
@@ -255,7 +257,7 @@ void smallsh() {
       else {
 
         // if child process is background
-        if (is_background_process) {
+        if (is_background_process && !foreground_only_mode_on) {
           background_children_array[background_children_array_size++] =
               spawnPid;
           background_children_count++;
@@ -328,6 +330,13 @@ void check_background_processes(pid_t *background_children_array,
 // signal catcher 
 
 void catch_SIGTSTP(int signo) {
-  char* message = "Entering foreground-only mode (& is now ignored)\n";
-  write(STDOUT_FILENO, message, 49);
+  char* message1 = "Entering foreground-only mode (& is now ignored)\n";
+  char* message2 = "Exiting foreground-only mode (& is now in effect)\n";
+  if(!foreground_only_mode_on){
+    write(STDOUT_FILENO, message1, 49);
+  }else{
+    write(STDOUT_FILENO, message1, 50);
+  }
+  foreground_only_mode_on = !foreground_only_mode_on;
+  fflush(stdout);
 }
