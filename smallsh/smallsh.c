@@ -271,9 +271,9 @@ void smallsh() {
           pid_t child_pid = waitpid(spawnPid, &childExitStatus, 0);
 
           // print exit status or termination status
-          /*if (WIFEXITED(childExitStatus)) {*/
-            /*printf("exit value %d\n", WEXITSTATUS(childExitStatus));*/
-          /*}*/
+          if (WIFEXITED(childExitStatus)) {
+            printf("exit value %d\n", WEXITSTATUS(childExitStatus));
+          }
           if (WIFSIGNALED(childExitStatus)) {
             printf("terminated by signal %d\n", WTERMSIG(childExitStatus));
           }
