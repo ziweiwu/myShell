@@ -8,7 +8,5 @@ add_executable(smallsh
         builtin_commands.c
         builtin_commands.h
         main.c
-        signal_catchers.c
-        signal_catchers.h
         smallsh.c
         smallsh.h)

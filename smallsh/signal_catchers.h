@@ -10,6 +10,6 @@
 #include <stdio.h>
 #include <unistd.h>
 
-void catch_SIGSTOP(int);
+void catch_SIGTSTP(int);
 
 #endif //PROJECT_SIGNAL_CATCHERS_H

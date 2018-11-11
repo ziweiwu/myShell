@@ -4,7 +4,7 @@
 
 #include "signal_catchers.h"
 
-void catch_SIGSTOP(int signo) {
+void catch_SIGTSTP(int signo) {
   char* message = "Entering foreground-only mode (& is now ignored)\n";
   write(STDOUT_FILENO, message, 49);
 }

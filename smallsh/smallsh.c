@@ -16,7 +16,7 @@ void smallsh() {
   int background_children_array_size = 0;
 
   // set up signals
-  struct sigaction SIGINT_action = {0}, SIGSTOP_action = {0},
+  struct sigaction SIGINT_action = {0}, SIGTSTP_action = {0},
                    ignore_action = {0};
 
   // SIGINT
@@ -24,15 +24,14 @@ void smallsh() {
   sigfillset(&SIGINT_action.sa_mask);
   SIGINT_action.sa_flags = SA_RESTART;  // prevent interrupt system call
 
-  // SIGSTOP
-  SIGSTOP_action.sa_handler = catch_SIGSTOP;
-  sigfillset(&SIGSTOP_action.sa_mask);
-  SIGSTOP_action.sa_flags = SA_RESTART;
+  // SIGTSTP
+  SIGTSTP_action.sa_handler = catch_SIGTSTP;
+  sigfillset(&SIGTSTP_action.sa_mask);
+  SIGTSTP_action.sa_flags = SA_RESTART;
 
   ignore_action.sa_handler = SIG_IGN;
 
   sigaction(SIGINT, &ignore_action, NULL);
-  sigaction(SIGSTOP, &ignore_action, NULL);
 
   pid_t spawnPid = -5;
   int childExitStatus = 0;
@@ -56,6 +55,8 @@ void smallsh() {
 
     // set up  main shell to ignore SIGINT
     // save current standard input and standard out
+    sigaction(SIGTSTP, &SIGTSTP_action, NULL);
+
     printf(": ");
     // need to flush out unused output buffer before input
     fflush(stdout);
@@ -64,9 +65,9 @@ void smallsh() {
     char *buffer_ptr = buffer;
     size_t buffer_len = MAX_COMMAND_LENGTH;
     memset(buffer, '\0', buffer_len);
-    /*int n = read(STDOUT_FILENO, buffer, sizeof(buffer));*/
+    int n = read(STDOUT_FILENO, buffer, sizeof(buffer));
 
-    int n = getline(&buffer_ptr, &buffer_len, stdin);
+    /*int n = getline(&buffer_ptr, &buffer_len, stdin);*/
     buffer[strlen(buffer) - 1] = '\0';
 
     /*printf("You entered %d characters\n", n);*/
@@ -171,9 +172,10 @@ void smallsh() {
       // in child process
       else if (spawnPid == 0) {
 
-        // set all children to ignore SIGSTOP
-        sigaction(SIGSTOP, &ignore_action, NULL);
-
+        // set all children to ignore SIGTSTP
+        sigaction(SIGTSTP, &ignore_action, NULL);
+        
+        // set foreground process to catch SIGINT
         if (!is_background_process) {
           sigaction(SIGINT, &SIGINT_action, NULL);
         }
@@ -267,9 +269,9 @@ void smallsh() {
           pid_t child_pid = waitpid(spawnPid, &childExitStatus, 0);
 
           // print exit status or termination status
-          if (WIFEXITED(childExitStatus)) {
-            printf("exit value %d\n", WEXITSTATUS(childExitStatus));
-          }
+          /*if (WIFEXITED(childExitStatus)) {*/
+            /*printf("exit value %d\n", WEXITSTATUS(childExitStatus));*/
+          /*}*/
           if (WIFSIGNALED(childExitStatus)) {
             printf("terminated by signal %d\n", WTERMSIG(childExitStatus));
           }
@@ -320,4 +322,12 @@ void check_background_processes(pid_t *background_children_array,
       }
     }
   }
+}
+
+
+// signal catcher 
+
+void catch_SIGTSTP(int signo) {
+  char* message = "Entering foreground-only mode (& is now ignored)\n";
+  write(STDOUT_FILENO, message, 49);
 }

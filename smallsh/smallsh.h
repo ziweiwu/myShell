@@ -5,14 +5,14 @@
 #ifndef PROJECT_SMALLSH_H
 #define PROJECT_SMALLSH_H
 
+#include <signal.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <string.h>
 #include <unistd.h>
-#include "signal_catchers.h"
 #include "builtin_commands.h"
 
 #define MAX_COMMAND_LENGTH 2050
@@ -20,6 +20,7 @@
 
 int is_blank_line(char *, int);
 void check_background_processes(pid_t *, int, int *);
+void catch_SIGTSTP(int);
 
 void smallsh();
 
