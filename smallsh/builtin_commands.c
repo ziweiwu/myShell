@@ -8,10 +8,10 @@ void cd_command(char* path) {
 
   // if cd has no argument, cd to home directory
   if (*path == 0) {
-    printf("cd to %s\n", getenv("HOME"));
+    /*printf("cd to %s\n", getenv("HOME"));*/
     ret = chdir(getenv("HOME"));
   } else {
-    printf("cd to %s\n", path);
+    /*printf("cd to %s\n", path);*/
     ret = chdir(path);
   }
 
@@ -20,7 +20,7 @@ void cd_command(char* path) {
     exit(1);
   }
   if (ret == 0) {
-    printf("Changed directory to %s\n", path);
+    /*printf("Changed directory to %s\n", path);*/
   }
 }
 
@@ -38,10 +38,10 @@ int get_status(int status) {
 void exit_command(pid_t* child_pid_array, int child_count) {
   int i;
   for (i = 0; i < child_count; i++) {
-    printf("kill process %d\n", *(child_pid_array + i));
+    /*printf("kill process %d\n", *(child_pid_array + i));*/
     kill(*(child_pid_array + i), 15);
   }
-  printf("All processes are killed\n");
-  printf("Smallsh is exiting\n");
+  /*printf("All processes are killed\n");*/
+  /*printf("Smallsh is exiting\n");*/
   exit(0);
 }
