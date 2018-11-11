@@ -335,7 +335,7 @@ void catch_SIGTSTP(int signo) {
   if(!foreground_only_mode_on){
     write(STDOUT_FILENO, message1, 49);
   }else{
-    write(STDOUT_FILENO, message1, 50);
+    write(STDOUT_FILENO, message2, 50);
   }
   foreground_only_mode_on = !foreground_only_mode_on;
   fflush(stdout);
