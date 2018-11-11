@@ -137,7 +137,10 @@ void smallsh() {
 
         // receive &
         else if (strcmp(p, "&") == 0) {
-          is_background_process = 1;
+
+          if(!foreground_only_mode_on){
+            is_background_process = 1;
+          }
         }
 
         // if current command pointer is not pecial symbols
@@ -230,7 +233,7 @@ void smallsh() {
         }
 
         // if background child process does not redirect input
-        if (!foreground_only_mode_on && is_background_process &&
+        if (is_background_process &&
             !redirect_input) {
           int dev_NULL = open("/dev/null", O_WRONLY);
 
@@ -246,7 +249,7 @@ void smallsh() {
         }
 
         // if background child process does not redirect output
-        if (!foreground_only_mode_on && is_background_process &&
+        if (is_background_process &&
             !redirect_output) {
           int dev_NULL = open("/dev/null", O_WRONLY);
 
@@ -271,12 +274,12 @@ void smallsh() {
       // in parent
       else {
         // if child process is background
-        if (is_background_process && !foreground_only_mode_on) {
+        if (is_background_process) {
           background_children_array[background_children_array_size++] =
               spawnPid;
           background_children_count++;
-          /*printf("background pid is %d\n", spawnPid);*/
-          /*fflush(stdout);*/
+          printf("background pid is %d\n", spawnPid);
+          fflush(stdout);
         }
 
         // child process is foreground
