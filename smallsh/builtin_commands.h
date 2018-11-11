@@ -13,7 +13,7 @@
 #include <sys/wait.h>
 
 void cd_command(char *);
-void status_command(int );
+int get_status(int);
 void exit_command(pid_t *, int);
 
 #endif

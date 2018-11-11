@@ -4,78 +4,84 @@
 #include "smallsh.h"
 
 void smallsh() {
-  printf("Smallsh running\n");
+  /*printf("Smallsh running\n");*/
 
   pid_t shell_pid = getpid();
-  printf("Smallsh pid is %d\n", shell_pid);
+  /*printf("Smallsh pid is %d\n", shell_pid);*/
 
   // set up an array to save child process PID
-  pid_t child_pid_array[1000];
-
-  int i, child_count = 0;
+  pid_t background_children_array[1000];
+  int i = 0;
+  int background_children_count = 0;
+  int background_children_array_size = 0;
 
   // set up signals
-  struct sigaction SIGINT_action = {0}, SIGTERM_action = {0},
-                   SIGCHLD_action = {0}, ignore_action = {0};
-  SIGINT_action.sa_handler = catch_SIGTERM;
-  SIGCHLD_action.sa_handler = catch_SIGCHLD;
-  sigfillset(&SIGTERM_action.sa_mask);
+  struct sigaction SIGINT_action = {0}, SIGSTOP_action = {0},
+                   ignore_action = {0};
+
+  // SIGINT
+  SIGINT_action.sa_handler = SIG_DFL;
   sigfillset(&SIGINT_action.sa_mask);
-  SIGTERM_action.sa_flags = 0;
-  SIGCHLD_action.sa_flags = 0;
+  SIGINT_action.sa_flags = SA_RESTART;  // prevent interrupt system call
+
+  // SIGSTOP
+  SIGSTOP_action.sa_handler = catch_SIGSTOP;
+  sigfillset(&SIGSTOP_action.sa_mask);
+  SIGSTOP_action.sa_flags = SA_RESTART;
 
   ignore_action.sa_handler = SIG_IGN;
 
-  /*sigaction(SIGTERM, &SIGTERM_action, NULL);*/
-  /*sigaction(SIGINT, &ignore_action, NULL);*/
-  /*sigaction(SIGHUP, &ignore_action, NULL);*/
+  sigaction(SIGINT, &ignore_action, NULL);
+  sigaction(SIGSTOP, &ignore_action, NULL);
 
   pid_t spawnPid = -5;
-  int childExitStatus = -5;
+  int childExitStatus = 0;
 
   while (1) {
-    // print past child pid
-    /*for (i = 0; i < child_count; i++) {*/
-    /*printf("Past child pid: is %d\n", child_pid_array[i]);*/
-    /*fflush(stdout);*/
-    /*}*/
 
     // flags
     int is_background_process = 0;
-    int  redirect_input = 0;
-    int  redirect_output = 0;
+    int foreground_mode_on = 0;
+    int redirect_input = 0;
+    int redirect_output = 0;
 
     // input file and output file
     char *input_file = 0;
     char *output_file = 0;
 
+    // check if there are background children that has terminated
+    check_background_processes(background_children_array,
+                               background_children_array_size,
+                               &background_children_count);
+
+    // set up  main shell to ignore SIGINT
     // save current standard input and standard out
     printf(": ");
     // need to flush out unused output buffer before input
     fflush(stdout);
 
     char buffer[MAX_COMMAND_LENGTH];
-    char * buffer_ptr = buffer; 
+    char *buffer_ptr = buffer;
     size_t buffer_len = MAX_COMMAND_LENGTH;
     memset(buffer, '\0', buffer_len);
     /*int n = read(STDOUT_FILENO, buffer, sizeof(buffer));*/
-    
+
     int n = getline(&buffer_ptr, &buffer_len, stdin);
-    buffer[strlen(buffer)-1]='\0';
+    buffer[strlen(buffer) - 1] = '\0';
 
     /*printf("You entered %d characters\n", n);*/
     /*printf("You entered %s\n", buffer);*/
     /*fflush(stdout);*/
 
-    // detect empty line or blank line 
-    if(strlen(buffer)==0 || is_blank_line(buffer,n)){
+    // detect empty line or blank line
+    if (strlen(buffer) == 0 || is_blank_line(buffer, n)) {
       continue;
     }
 
     // detect comment line
-    if(buffer[0]=='#'){
+    if (buffer[0] == '#') {
       continue;
-    } 
+    }
 
     // if user uses cd
     if (strstr(buffer, "cd") != NULL) {
@@ -86,14 +92,14 @@ void smallsh() {
     }
 
     // if user uses status
-    if (strcmp(buffer, "status") == 0) {
-      status_command(childExitStatus);
+    else if (strcmp(buffer, "status") == 0) {
+      printf("exit status: %d\n", get_status(childExitStatus));
       fflush(stdout);
     }
 
     // if user uses exit
-    if (strcmp(buffer, "exit") == 0) {
-      exit_command(child_pid_array, child_count);
+    else if (strcmp(buffer, "exit") == 0) {
+      exit_command(background_children_array, background_children_count);
       break;
     }
 
@@ -112,7 +118,7 @@ void smallsh() {
 
       // parse command and arguments
       while (p != NULL) {
-        // receive $$, need expand pid 
+        // receive $$, need expand pid
         if (strcmp(p, "$$") == 0) {
           char shell_pid_buffer[sizeof(shell_pid) * 4 + 1];
           memset(shell_pid_buffer, '\0', sizeof(shell_pid) * 4 + 1);
@@ -134,7 +140,7 @@ void smallsh() {
         else if (strcmp(p, ">") == 0) {
           p = strtok(NULL, " ");
           output_file = p;
-          redirect_output=1;
+          redirect_output = 1;
           printf("output target is %s\n", p);
           fflush(stdout);
         }
@@ -152,15 +158,8 @@ void smallsh() {
         p = strtok(NULL, " ");
       }
 
-      printf("The command you enter is: ");
-      printf("%s ", commands[0]);
-      printf("%s ", commands[1]);
-      printf("\n");
-      fflush(stdout);
-
       // fork a child process for exec the command
       spawnPid = fork();
-
 
       // fork failed
       if (spawnPid == -1) {
@@ -172,89 +171,109 @@ void smallsh() {
       // in child process
       else if (spawnPid == 0) {
 
+        // set all children to ignore SIGSTOP
+        sigaction(SIGSTOP, &ignore_action, NULL);
 
-      // setup redirect input
-      if (redirect_input) {
-        printf("openning %s\n", input_file);
-        sourceFD = open(input_file, O_RDONLY);
-        if (sourceFD == -1) {
-          perror("failed to open source file");
-          exit(1);
-        }
-        if (dup2(sourceFD, STDIN_FILENO) == -1) {
-          perror("Unable to redirect source file");
-          exit(1);
-        }
-      }
-
-      // setup redirect output
-      if (redirect_output) {
-        printf("openning %s\n", output_file);
-        targetFD = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-        if (targetFD == -1) {
-          perror("failed to open target file");
-          exit(1);
-        }
-        if (dup2(targetFD, STDOUT_FILENO) == -1) {
-          perror("Unable to redirect source file");
-          exit(1);
-        }
-      }
-
-      // if background child process does not redirect input
-      if (is_background_process && !redirect_input) {
-        int dev_NULL = open("/dev/null", O_WRONLY);
-
-        if (dev_NULL == -1) {
-          perror("failed to open dev/null");
-          exit(1);
+        if (!is_background_process) {
+          sigaction(SIGINT, &SIGINT_action, NULL);
         }
 
-        if (dup2(dev_NULL, STDIN_FILENO) == -1) {
-          perror("Unable to redirect input to dev/null");
-          exit(1);
+        // setup redirect input
+        if (redirect_input) {
+          printf("openning %s\n", input_file);
+          fflush(stdout);
+
+          sourceFD = open(input_file, O_RDONLY);
+          if (sourceFD == -1) {
+            printf("Failed to open source file %s\n", input_file);
+            fflush(stdout);
+            exit(1);
+          }
+          if (dup2(sourceFD, STDIN_FILENO) == -1) {
+            perror("Unable to redirect source file\n");
+            exit(1);
+          }
         }
-      }
 
-      // if background child process does not redirect output
-      if (is_background_process && !redirect_output) {
-        int dev_NULL = open("/dev/null", O_WRONLY);
+        // setup redirect output
+        if (redirect_output) {
+          printf("openning %s\n", output_file);
+          fflush(stdout);
 
-        if (dev_NULL == -1) {
-          perror("failed to open dev/null");
-          exit(1);
+          targetFD = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+          if (targetFD == -1) {
+            printf("failed to open target file %s\n", output_file);
+            fflush(stdout);
+            exit(1);
+          }
+          if (dup2(targetFD, STDOUT_FILENO) == -1) {
+            perror("Unable to redirect target file\n");
+            exit(1);
+          }
         }
 
-        if (dup2(dev_NULL, STDOUT_FILENO) == -1) {
-          perror("Unable to redirect output to dev/null");
-          exit(1);
+        // if background child process does not redirect input
+        if (is_background_process && !redirect_input) {
+          int dev_NULL = open("/dev/null", O_WRONLY);
+
+          if (dev_NULL == -1) {
+            perror("failed to open dev/null as source\n");
+            exit(1);
+          }
+
+          if (dup2(dev_NULL, STDIN_FILENO) == -1) {
+            perror("Unable to redirect input to dev/null\n");
+            exit(1);
+          }
         }
-      }
 
+        // if background child process does not redirect output
+        if (is_background_process && !redirect_output) {
+          int dev_NULL = open("/dev/null", O_WRONLY);
 
-        
+          if (dev_NULL == -1) {
+            perror("failed to open dev/null as target\n");
+            exit(1);
+          }
+
+          if (dup2(dev_NULL, STDOUT_FILENO) == -1) {
+            perror("Unable to redirect output to dev/null\n");
+            exit(1);
+          }
+        }
+
+        // execute none builtin commands
         execvp(commands[0], commands);
-        perror("Child: exec failure!\n");
-        printf("%s failed", commands[0]);
+        printf("%s failed to execute\n", commands[0]);
         fflush(stdout);
         exit(1);
       }
 
-      // in parent process
+      // in parent
       else {
+
         // if child process is background
         if (is_background_process) {
-          child_pid_array[child_count++] = spawnPid;
+          background_children_array[background_children_array_size++] =
+              spawnPid;
+          background_children_count++;
           printf("background pid is %d\n", spawnPid);
           fflush(stdout);
         }
 
         // child process is foreground
         else {
-          sleep(1);
-          pid_t actualPid = waitpid(spawnPid, &childExitStatus, 0);
-          printf("Parent(%d): Child(%d) terminated, Exiting!\n", getpid(),
-                 actualPid);
+
+          pid_t child_pid = waitpid(spawnPid, &childExitStatus, 0);
+
+          // print exit status or termination status
+          if (WIFEXITED(childExitStatus)) {
+            printf("exit value %d\n", WEXITSTATUS(childExitStatus));
+          }
+          if (WIFSIGNALED(childExitStatus)) {
+            printf("terminated by signal %d\n", WTERMSIG(childExitStatus));
+          }
+
           fflush(stdout);
         }
       }
@@ -262,13 +281,43 @@ void smallsh() {
   }
 }
 
-
-int is_blank_line(char* buffer, int len){
+/*check if a string is a blank line*/
+int is_blank_line(char *buffer, int len) {
   int i;
-  for(i =0 ; i < len - 1; i++){
-    if(!isspace(buffer[i])){
+  for (i = 0; i < len - 1; i++) {
+    if (!isspace(buffer[i])) {
       return 0;
     }
   }
   return 1;
+}
+
+/*check if any background children has terminated */
+void check_background_processes(pid_t *background_children_array,
+                                int background_children_array_size,
+                                int *background_children_count) {
+  int i, pid;
+  int status = -5;
+  if (background_children_count > 0) {
+    for (i = 0; i < background_children_array_size; i++) {
+      // pid is process pid if child has terminated, 0 if nothing changes,
+      pid = waitpid(background_children_array[i], &status, WNOHANG);
+      // if child has terminated
+      if (pid > 0) {
+        if (WIFEXITED(status)) {
+          status = WEXITSTATUS(status);
+          printf("background pid %d is done: exit value %d\n", pid, status);
+        }
+        if (WIFSIGNALED(status)) {
+          status = WTERMSIG(status);
+          printf("background pid %d is terminated by signal: %d\n", pid,
+                 status);
+        }
+
+        (*background_children_count)--;
+        printf("Currently there are  %d background children \n",
+               *background_children_count);
+      }
+    }
+  }
 }

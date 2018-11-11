@@ -24,11 +24,15 @@ void cd_command(char* path) {
   }
 }
 
-void status_command(int childExitStatus) {
-  printf("child exit status is %d\n", childExitStatus);
-  if (WIFEXITED(childExitStatus) == 0) {
-    printf("exit status %d\n", WEXITSTATUS(childExitStatus));
-  }
+int get_status(int status) {
+  if (WIFEXITED(status)) {
+    status= WEXITSTATUS(status);
+  }  
+  if (WIFSIGNALED(status))
+	{
+    status= WTERMSIG(status);
+	}
+  return status;
 }
 
 void exit_command(pid_t* child_pid_array, int child_count) {
@@ -39,4 +43,5 @@ void exit_command(pid_t* child_pid_array, int child_count) {
   }
   printf("All processes are killed\n");
   printf("Smallsh is exiting\n");
+  exit(0);
 }

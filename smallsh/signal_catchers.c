@@ -4,18 +4,8 @@
 
 #include "signal_catchers.h"
 
-
-void catch_SIGTERM(int sig){
-  char * message = "Exit command is called. Exiting\n";
-  write(STDOUT_FILENO, message, 32);
-  fflush(stdout);
-  exit(0);
+void catch_SIGSTOP(int signo) {
+  char* message = "Entering foreground-only mode (& is now ignored)\n";
+  write(STDOUT_FILENO, message, 49);
 }
 
-
-void catch_SIGCHLD(int sig){
-  char * message = "Child command is done working. Exit Child\n";
-  write(STDOUT_FILENO, message, 32);
-  fflush(stdout);
-  exit(0);
-}

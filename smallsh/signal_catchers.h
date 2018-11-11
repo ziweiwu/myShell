@@ -10,7 +10,6 @@
 #include <stdio.h>
 #include <unistd.h>
 
-void catch_SIGTERM(int);
-void catch_SIGCHLD(int);
+void catch_SIGSTOP(int);
 
 #endif //PROJECT_SIGNAL_CATCHERS_H
