@@ -7,7 +7,7 @@ void cd_command(char* path) {
   int ret;
 
   // if cd has no argument, cd to home directory
-  if (*path == 0) {
+  if (path == NULL) {
     /*printf("cd to %s\n", getenv("HOME"));*/
     ret = chdir(getenv("HOME"));
   } else {
@@ -19,9 +19,7 @@ void cd_command(char* path) {
     perror("chdir failed");
     exit(1);
   }
-  if (ret == 0) {
-    /*printf("Changed directory to %s\n", path);*/
-  }
+  exit(0);
 }
 
 int get_status(int status) {

@@ -30,11 +30,12 @@ void smallsh() {
   // SIGTSTP
   SIGTSTP_action.sa_handler = catch_SIGTSTP;
   sigfillset(&SIGTSTP_action.sa_mask);
-  SIGTSTP_action.sa_flags = SA_RESTART;
+  SIGTSTP_action.sa_flags = 0;
 
   ignore_action.sa_handler = SIG_IGN;
 
   sigaction(SIGINT, &ignore_action, NULL);
+  sigaction(SIGTSTP, &SIGTSTP_action, NULL);
 
   pid_t spawnPid = -5;
   int childExitStatus = 0;
@@ -57,53 +58,38 @@ void smallsh() {
 
     // set up  main shell to ignore SIGINT
     // save current standard input and standard out
-    sigaction(SIGTSTP, &SIGTSTP_action, NULL);
 
-    printf(": ");
-    // need to flush out unused output buffer before input
-    fflush(stdout);
 
     char buffer[MAX_COMMAND_LENGTH];
     char *buffer_ptr = buffer;
+    int num_characters_entered = -5;
     size_t buffer_len = MAX_COMMAND_LENGTH;
     memset(buffer, '\0', buffer_len);
-    int n = read(STDOUT_FILENO, buffer, sizeof(buffer));
 
-    /*int n = getline(&buffer_ptr, &buffer_len, stdin);*/
+    /*int n = read(STDOUT_FILENO, buffer, sizeof(buffer));*/
+    
+    // get user input
+    while (1) {
+      printf(": ");
+      // need to flush out unused output buffer before input
+      fflush(stdout);
+      num_characters_entered = getline(&buffer_ptr, &buffer_len, stdin);
+      if (num_characters_entered == -1) {
+        clearerr(stdin);
+      } else {
+        break;
+      }
+    }
     buffer[strlen(buffer) - 1] = '\0';
 
-    /*printf("You entered %d characters\n", n);*/
-    /*printf("You entered %s\n", buffer);*/
-    /*fflush(stdout);*/
-
     // detect empty line or blank line
-    if (strlen(buffer) == 0 || is_blank_line(buffer, n)) {
+    if (strlen(buffer) == 0 || is_blank_line(buffer, num_characters_entered)) {
       continue;
     }
 
     // detect comment line
     if (buffer[0] == '#') {
       continue;
-    }
-
-    // if user uses cd
-    if (strstr(buffer, "cd") != NULL) {
-      // move buffer point to parse path name
-      char *path_name = buffer + strlen("cd") + 1;
-      printf("%s\n", path_name);
-      cd_command(path_name);
-    }
-
-    // if user uses status
-    else if (strcmp(buffer, "status") == 0) {
-      printf("exit status: %d\n", get_status(childExitStatus));
-      fflush(stdout);
-    }
-
-    // if user uses exit
-    else if (strcmp(buffer, "exit") == 0) {
-      exit_command(background_children_array, background_children_count);
-      break;
     }
 
     // if user uses a none-builtin commands
@@ -121,6 +107,7 @@ void smallsh() {
 
       // parse command and arguments
       while (p != NULL) {
+
         // receive $$, need expand pid
         if (strcmp(p, "$$") == 0) {
           char shell_pid_buffer[sizeof(shell_pid) * 4 + 1];
@@ -161,12 +148,38 @@ void smallsh() {
         p = strtok(NULL, " ");
       }
 
+      // if user uses cd
+      if (strcmp(commands[0], "cd") == 0) {
+        int ret;
+        if (!commands[1]) {
+          ret = chdir(getenv("HOME"));
+        } else {
+          ret = chdir(commands[1]);
+        }
+
+        childExitStatus = ret;     
+        continue;
+      }
+
+      // if user uses status
+      if (strcmp(commands[0], "status") == 0) {
+        printf("exit status: %d\n", get_status(childExitStatus));
+        fflush(stdout);
+        childExitStatus = 0;
+        continue;
+      }
+
+      // if user uses exit
+      if (strcmp(commands[0], "exit") == 0) {
+        exit_command(background_children_array, background_children_count);
+        break;
+      }
+
       // fork a child process for exec the command
       spawnPid = fork();
 
       // fork failed
       if (spawnPid == -1) {
-
         perror("Error forking\n");
         exit(1);
       }
@@ -176,7 +189,7 @@ void smallsh() {
 
         // set all children to ignore SIGTSTP
         sigaction(SIGTSTP, &ignore_action, NULL);
-        
+
         // set foreground process to catch SIGINT
         if (!is_background_process || foreground_only_mode_on) {
           sigaction(SIGINT, &SIGINT_action, NULL);
@@ -217,7 +230,8 @@ void smallsh() {
         }
 
         // if background child process does not redirect input
-        if (!foreground_only_mode_on&&is_background_process && !redirect_input) {
+        if (!foreground_only_mode_on && is_background_process &&
+            !redirect_input) {
           int dev_NULL = open("/dev/null", O_WRONLY);
 
           if (dev_NULL == -1) {
@@ -232,7 +246,8 @@ void smallsh() {
         }
 
         // if background child process does not redirect output
-        if (!foreground_only_mode_on&&is_background_process && !redirect_output) {
+        if (!foreground_only_mode_on && is_background_process &&
+            !redirect_output) {
           int dev_NULL = open("/dev/null", O_WRONLY);
 
           if (dev_NULL == -1) {
@@ -247,22 +262,21 @@ void smallsh() {
         }
 
         // execute none builtin commands
+         
         execvp(commands[0], commands);
         printf("%s failed to execute\n", commands[0]);
         fflush(stdout);
-        exit(1);
       }
 
       // in parent
       else {
-
         // if child process is background
         if (is_background_process && !foreground_only_mode_on) {
           background_children_array[background_children_array_size++] =
               spawnPid;
           background_children_count++;
-          printf("background pid is %d\n", spawnPid);
-          fflush(stdout);
+          /*printf("background pid is %d\n", spawnPid);*/
+          /*fflush(stdout);*/
         }
 
         // child process is foreground
@@ -271,14 +285,14 @@ void smallsh() {
           pid_t child_pid = waitpid(spawnPid, &childExitStatus, 0);
 
           // print exit status or termination status
-          if (WIFEXITED(childExitStatus)) {
-            printf("exit value %d\n", WEXITSTATUS(childExitStatus));
-          }
+          /*if (WIFEXITED(childExitStatus)) {*/
+            /*printf("exit value %d\n", WEXITSTATUS(childExitStatus));*/
+            /*fflush(stdout);*/
+          /*}*/
           if (WIFSIGNALED(childExitStatus)) {
             printf("terminated by signal %d\n", WTERMSIG(childExitStatus));
+            fflush(stdout);
           }
-
-          fflush(stdout);
         }
       }
     }
@@ -311,32 +325,31 @@ void check_background_processes(pid_t *background_children_array,
         if (WIFEXITED(status)) {
           status = WEXITSTATUS(status);
           printf("background pid %d is done: exit value %d\n", pid, status);
+          fflush(stdout);
         }
         if (WIFSIGNALED(status)) {
           status = WTERMSIG(status);
           printf("background pid %d is terminated by signal: %d\n", pid,
                  status);
+          fflush(stdout);
         }
-
         (*background_children_count)--;
-        printf("Currently there are  %d background children \n",
-               *background_children_count);
+        /*printf("Currently there are  %d background children \n",*/
+        /**background_children_count);*/
       }
     }
   }
 }
 
-
-// signal catcher 
-
+// signal catcher
 void catch_SIGTSTP(int signo) {
-  char* message1 = "Entering foreground-only mode (& is now ignored)\n";
-  char* message2 = "Exiting foreground-only mode (& is now in effect)\n";
-  if(!foreground_only_mode_on){
-    write(STDOUT_FILENO, message1, 49);
-  }else{
-    write(STDOUT_FILENO, message2, 50);
+  char *message1 = "\nEntering foreground-only mode (& is now ignored)\n";
+  char *message2 = "\nExiting foreground-only mode (& is now in effect)\n";
+  if (!foreground_only_mode_on) {
+    write(STDOUT_FILENO, message1, 50);
+  } else {
+    write(STDOUT_FILENO, message2, 51);
   }
-  foreground_only_mode_on = !foreground_only_mode_on;
   fflush(stdout);
+  foreground_only_mode_on = !foreground_only_mode_on;
 }
