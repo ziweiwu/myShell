@@ -19,7 +19,7 @@
 #define MAX_NUM_ARGS 512
 
 int is_blank_line(char *, int);
-void check_background_processes(pid_t *, int, int *);
+void check_background_processes(pid_t *, int, int *, int *);
 void catch_SIGTSTP(int);
 
 void smallsh();

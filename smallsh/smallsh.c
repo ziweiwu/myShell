@@ -54,11 +54,10 @@ void smallsh() {
     // check if there are background children that has terminated
     check_background_processes(background_children_array,
                                background_children_array_size,
-                               &background_children_count);
+                               &background_children_count, &childExitStatus);
 
     // set up  main shell to ignore SIGINT
     // save current standard input and standard out
-
 
     char buffer[MAX_COMMAND_LENGTH];
     char *buffer_ptr = buffer;
@@ -67,7 +66,7 @@ void smallsh() {
     memset(buffer, '\0', buffer_len);
 
     /*int n = read(STDOUT_FILENO, buffer, sizeof(buffer));*/
-    
+
     // get user input
     while (1) {
       printf(": ");
@@ -138,7 +137,7 @@ void smallsh() {
         // receive &
         else if (strcmp(p, "&") == 0) {
 
-          if(!foreground_only_mode_on){
+          if (!foreground_only_mode_on) {
             is_background_process = 1;
           }
         }
@@ -160,7 +159,7 @@ void smallsh() {
           ret = chdir(commands[1]);
         }
 
-        childExitStatus = ret;     
+        childExitStatus = ret;
         continue;
       }
 
@@ -233,8 +232,7 @@ void smallsh() {
         }
 
         // if background child process does not redirect input
-        if (is_background_process &&
-            !redirect_input) {
+        if (is_background_process && !redirect_input) {
           int dev_NULL = open("/dev/null", O_WRONLY);
 
           if (dev_NULL == -1) {
@@ -249,8 +247,7 @@ void smallsh() {
         }
 
         // if background child process does not redirect output
-        if (is_background_process &&
-            !redirect_output) {
+        if (is_background_process && !redirect_output) {
           int dev_NULL = open("/dev/null", O_WRONLY);
 
           if (dev_NULL == -1) {
@@ -265,7 +262,7 @@ void smallsh() {
         }
 
         // execute none builtin commands
-         
+
         execvp(commands[0], commands);
         printf("%s failed to execute\n", commands[0]);
         fflush(stdout);
@@ -289,8 +286,8 @@ void smallsh() {
 
           // print exit status or termination status
           /*if (WIFEXITED(childExitStatus)) {*/
-            /*printf("exit value %d\n", WEXITSTATUS(childExitStatus));*/
-            /*fflush(stdout);*/
+          /*printf("exit value %d\n", WEXITSTATUS(childExitStatus));*/
+          /*fflush(stdout);*/
           /*}*/
           if (WIFSIGNALED(childExitStatus)) {
             printf("terminated by signal %d\n", WTERMSIG(childExitStatus));
@@ -316,7 +313,8 @@ int is_blank_line(char *buffer, int len) {
 /*check if any background children has terminated */
 void check_background_processes(pid_t *background_children_array,
                                 int background_children_array_size,
-                                int *background_children_count) {
+                                int *background_children_count,
+                                int *childExitStatus) {
   int i, pid;
   int status = -5;
   if (background_children_count > 0) {
@@ -339,6 +337,8 @@ void check_background_processes(pid_t *background_children_array,
         (*background_children_count)--;
         /*printf("Currently there are  %d background children \n",*/
         /**background_children_count);*/
+
+        *childExitStatus = status;
       }
     }
   }
