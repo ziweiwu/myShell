@@ -3,43 +3,56 @@
 //
 #include "builtin_commands.h"
 
-void cd_command(char* path) {
+void cd_command(char* path, int* childExitStatus) {
   int ret;
-
-  // if cd has no argument, cd to home directory
-  if (path == NULL) {
-    /*printf("cd to %s\n", getenv("HOME"));*/
+  // if no path is given, cd to home dir
+  if (!path) {
     ret = chdir(getenv("HOME"));
-  } else {
-    /*printf("cd to %s\n", path);*/
+  } 
+  // cd to dir given by path 
+  else {
     ret = chdir(path);
   }
 
-  if (ret == -1) {
-    perror("chdir failed");
-    exit(1);
+  // set exit status based on ret
+  if (ret==-1) {
+    perror("cd command failed");
+    *childExitStatus = 1;
+  } else {
+    *childExitStatus = 0;
   }
-  exit(0);
 }
 
+// return the exit status  
 int get_status(int status) {
+  //if process is exited
   if (WIFEXITED(status)) {
-    status= WEXITSTATUS(status);
-  }  
-  if (WIFSIGNALED(status))
-	{
-    status= WTERMSIG(status);
-	}
+    status = WEXITSTATUS(status);
+  }
+  //if process is terminated by signal
+  if (WIFSIGNALED(status)) {
+    status = WTERMSIG(status);
+  }
   return status;
 }
 
-void exit_command(pid_t* child_pid_array, int child_count) {
+// print out the exit status
+void status_command(int* status) {
+  printf("exit status: %d\n", get_status(*status));
+  fflush(stdout);
+  *status = 0;
+}
+
+// exit the shell
+void exit_command(pid_t* child_pid_array, int child_pid_array_size) {
   int i;
-  for (i = 0; i < child_count; i++) {
-    /*printf("kill process %d\n", *(child_pid_array + i));*/
+  
+  //ensure no background processes are left running  
+  for (i = 0; i < child_pid_array_size; i++) {
+    printf("kill process %d\n", *(child_pid_array + i));
     kill(*(child_pid_array + i), 15);
   }
-  /*printf("All processes are killed\n");*/
-  /*printf("Smallsh is exiting\n");*/
+  printf("All background processes are killed\n");
+  printf("Smallsh is exiting\n");
   exit(0);
 }

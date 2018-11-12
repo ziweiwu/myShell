@@ -12,8 +12,10 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
-void cd_command(char *);
 int get_status(int);
+
+void cd_command(char *, int *);
+void status_command(int *);
 void exit_command(pid_t *, int);
 
 #endif
