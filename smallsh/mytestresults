@@ -1,0 +1,219 @@
+PRE-SCRIPT INFO
+  Grading Script PID: 11047
+  Note: your smallsh will report a different PID when evaluating $$
+: BEGINNING TEST SCRIPT
+: 
+: --------------------
+: Using comment (5 points if only next prompt is displayed next)
+: : 
+: 
+: --------------------
+: ls (10 points for returning dir contents)
+: builtin_commands.c
+builtin_commands.h
+CMakeCache.txt
+CMakeFiles
+cmake_install.cmake
+CMakeLists.txt
+compile_commands.json
+grade
+junk
+junk2
+main.c
+Makefile
+mytestresults
+numbers
+p3testscript
+README.md
+signal_catchers.c
+signal_catchers.h
+smallsh
+smallsh.c
+smallsh.h
+solarized.vim
+sort
+test
+test_results
+: 
+: 
+: --------------------
+: ls out junk
+: openning junk
+: 
+: 
+: --------------------
+: cat junk (15 points for correctly returning contents of junk)
+: builtin_commands.c
+builtin_commands.h
+CMakeCache.txt
+CMakeFiles
+cmake_install.cmake
+CMakeLists.txt
+compile_commands.json
+grade
+junk
+junk2
+main.c
+Makefile
+mytestresults
+numbers
+p3testscript
+README.md
+signal_catchers.c
+signal_catchers.h
+smallsh
+smallsh.c
+smallsh.h
+solarized.vim
+sort
+test
+test_results
+: 
+: 
+: --------------------
+: wc in junk (15 points for returning correct numbers from wc)
+: openning junk
+ 25  25 300
+: 
+: 
+: --------------------
+: wc in junk out junk2; cat junk2 (10 points for returning correct numbers from wc)
+: openning junk
+openning junk2
+:  25  25 300
+: 
+: 
+: --------------------
+: test -f badfile (10 points for returning error value of 1, note extraneous &)
+: : exit status: 1
+: 
+: 
+: --------------------
+: wc in badfile (10 points for returning text error)
+: openning badfile
+failed to open source file: No such file or directory
+: 
+: 
+: --------------------
+: badfile (10 points for returning text error)
+: badfile: cannot be found or failed to executed.
+: 
+: 
+: --------------------
+: sleep 100 background (10 points for returning process ID of sleeper)
+: background pid is 11098
+: 
+: 
+: --------------------
+: pkill -signal SIGTERM sleep (10 points for pid of killed process, 10 points for signal)
+: (Ignore message about Operation Not Permitted)
+: background pid 11098 is terminated by signal: 15
+: 
+: 
+: --------------------
+: sleep 1 background (10 pts for pid of bg ps when done, 10 for exit value)
+: background pid is 11109
+: background pid 11109 is done: exit value 0
+: 
+: 
+: --------------------
+: pwd
+: /home/vagrant/smallsh/smallsh
+: 
+: 
+: --------------------
+: cd
+: : 
+: 
+: --------------------
+: pwd (10 points for being in the HOME dir)
+: /home/vagrant
+: 
+: 
+: --------------------
+: mkdir testdir$$
+: mkdir: cannot create directory ‘testdir$$’: File exists
+: 
+: 
+: --------------------
+: cd testdir$$
+: : 
+: 
+: --------------------
+: pwd (5 points for being in the newly created dir)
+: /home/vagrant/testdir$$
+: --------------------
+: background pid is 11140
+: 
+Entering foreground-only mode (& is now ignored)
+: background pid 11140 is done: exit value 0
+: 
+: Mon Nov 12 21:02:18 UTC 2018
+: background pid is 11145
+: 
+: Mon Nov 12 21:02:18 UTC 2018
+: --------------------
+: 
+Exiting foreground-only mode (& is now in effect)
+: background pid is 11150
+: : kill process 11098
+kill process 11109
+kill process 11140
+kill process 11145
+All background processes are killed
+Smallsh is exiting
+sleep 100 background (10 points for returning process ID of sleeper)
+
+: 
+: --------------------
+: pkill -signal SIGTERM sleep (10 points for pid of killed process, 10 points for signal)
+: (Ignore message about Operation Not Permitted)
+: background pid 11150 is terminated by signal: 15
+: 
+: 
+: --------------------
+: sleep 1 background (10 pts for pid of bg ps when done, 10 for exit value)
+: background pid is 11161
+: background pid 11161 is done: exit value 0
+: 
+: 
+: --------------------
+: pwd
+: /home/vagrant/smallsh/smallsh
+: 
+: 
+: --------------------
+: cd
+: : 
+: 
+: --------------------
+: pwd (10 points for being in the HOME dir)
+: /home/vagrant
+: 
+: 
+: --------------------
+: mkdir testdir$$
+: mkdir: cannot create directory ‘testdir$$’: File exists
+: 
+: 
+: --------------------
+: cd testdir$$
+: : 
+: 
+: --------------------
+: pwd (5 points for being in the newly created dir)
+: /home/vagrant/testdir$$
+: --------------------
+: background pid is 11192
+: 
+Entering foreground-only mode (& is now ignored)
+: Mon Nov 12 21:02:20 UTC 2018
+background pid 11192 is done: exit value 0
+: : Mon Nov 12 21:02:25 UTC 2018
+: 
+Exiting foreground-only mode (& is now in effect)
+: kill process 11150
+kill process 11161
+kill process 11192
+All background processes are killed
+Smallsh is exiting
