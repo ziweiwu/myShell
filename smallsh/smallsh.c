@@ -110,10 +110,10 @@ void smallsh() {
 
       // receive $$
       /*if (strcmp(p, "$$") == 0) {*/
-        /*char shell_pid_buffer[sizeof(shell_pid) * 4 + 1];*/
-        /*memset(shell_pid_buffer, '\0', sizeof(shell_pid) * 4 + 1);*/
-        /*sprintf(shell_pid_buffer, "%d", shell_pid);*/
-        /*commands[count++] = shell_pid_buffer;*/
+      /*char shell_pid_buffer[sizeof(shell_pid) * 4 + 1];*/
+      /*memset(shell_pid_buffer, '\0', sizeof(shell_pid) * 4 + 1);*/
+      /*sprintf(shell_pid_buffer, "%d", shell_pid);*/
+      /*commands[count++] = shell_pid_buffer;*/
       /*}*/
 
       // receive < for input file
@@ -133,36 +133,33 @@ void smallsh() {
         redirect_output = 1;
         /*printf("output target is %s\n", p);*/
         /*fflush(stdout);*/
-      }
+      } else {
 
-      else {
-
-        //perform $$ expansion to shell pid
+        // perform $$ expansion to shell pid
         char shell_pid_buffer[sizeof(shell_pid) * 4 + 1];
         memset(shell_pid_buffer, '\0', sizeof(shell_pid) * 4 + 1);
         sprintf(shell_pid_buffer, "%d", shell_pid);
-        p=str_replace("$$", shell_pid_buffer, p);
+        p = str_replace("$$", shell_pid_buffer, p);
 
         /*printf("Your command is %s\n", p);*/
         /*fflush(stdout);*/
-        
-        //add command to command array
+
+        // add command to command array
         commands[count++] = p;
       }
       // keep parsing
       p = strtok(NULL, " ");
     }
-      
+
     // check if & is at the end of command
-    // if there is, turn on background flag 
+    // if there is, turn on background flag
     // as long as foreground only mode is off
-    if(strcmp(commands[count-1], "&")==0){
-      printf("Found &\n");
-      if(!foreground_only_mode_on){
+    if (strcmp(commands[count - 1], "&") == 0) {
+      if (!foreground_only_mode_on) {
         is_background_process = 1;
       }
-      //remove & symbol from command
-      commands[count-1] = NULL;
+      // remove & symbol from command
+      commands[count - 1] = NULL;
     }
 
     // if user uses cd
@@ -205,8 +202,8 @@ void smallsh() {
 
       // setup redirect input
       if (redirect_input) {
-        printf("openning %s\n", input_file);
-        fflush(stdout);
+        /*printf("openning %s\n", input_file);*/
+        /*fflush(stdout);*/
 
         sourceFD = open(input_file, O_RDONLY);
         if (sourceFD == -1) {
@@ -221,8 +218,8 @@ void smallsh() {
 
       // setup redirect output
       if (redirect_output) {
-        printf("openning %s\n", output_file);
-        fflush(stdout);
+        /*printf("openning %s\n", output_file);*/
+        /*fflush(stdout);*/
 
         targetFD = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
         if (targetFD == -1) {
@@ -288,8 +285,8 @@ void smallsh() {
       else {
 
         pid_t child_pid = waitpid(spawnPid, &childExitStatus, 0);
-        
-        // check to see if it was terminated by a signal 
+
+        // check to see if it was terminated by a signal
         // and print out the signal number
         if (WIFSIGNALED(childExitStatus)) {
           printf("terminated by signal %d\n", WTERMSIG(childExitStatus));
@@ -366,36 +363,39 @@ void catch_SIGTSTP(int signo) {
   foreground_only_mode_on = !foreground_only_mode_on;
 }
 
+// string replace
+// reference: https://www.binarytides.com/str_replace-for-c/
 
-//string replace 
-//reference: https://www.binarytides.com/str_replace-for-c/
+char *str_replace(char *search_term, char *replace_term, char *string) {
+  char *p = NULL, *old_string = NULL, *new_string = NULL;
+  int count = 0, search_term_size, new_string_size;
 
-char * str_replace(char *search_term, char * replace_term, char * string){
-  char * p = NULL, *old_string = NULL, *new_string = NULL;
+  search_term_size = strlen(search_term);
 
-  int c = 0, search_size;
-
-  search_size = strlen(search_term);
-  
-  for(p = strstr(string, search_term); p != NULL; p=strstr(p+search_size, search_term)){
-    c++;
+  // count occurance of search term
+  p = strstr(string, search_term);
+  for (p = strstr(string, search_term); p != NULL;
+       p = strstr(p + search_term_size, search_term)) {
+    count++;
   }
-    
-  c = (strlen(replace_term)-search_size)*c + strlen(string);
-  
-  new_string = malloc(c);
+
+  // compute the size of new string, allocate the space for it
+  new_string_size =
+      (strlen(replace_term) - search_term_size) * count + strlen(string);
+  new_string = malloc(new_string_size);
 
   strcpy(new_string, "");
-
   old_string = string;
 
-  for(p = strstr(string, search_term); p != NULL; p = strstr(p+search_size, search_term)){
-    strncpy(new_string+strlen(new_string), old_string, p-old_string);
+  // replacing search term with replace term, create the new string
+  for (p = strstr(string, search_term); p != NULL;
+       p = strstr(p + search_term_size, search_term)) {
+    strncpy(new_string + strlen(new_string), old_string, p - old_string);
     strcpy(new_string + strlen(new_string), replace_term);
-    old_string=p+search_size;
+    old_string = p + search_term_size;
   }
 
-  strcpy(new_string+strlen(new_string), old_string);
+  strcpy(new_string + strlen(new_string), old_string);
 
   return new_string;
 }
