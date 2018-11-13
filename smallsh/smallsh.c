@@ -17,7 +17,6 @@ void smallsh() {
   int i = 0;
   int background_children_count = 0;
   int background_children_array_size = 0;
-  int foreground_only_mode_on = 0;
   // set up signals
   struct sigaction SIGINT_action = {0}, SIGTSTP_action = {0},
                    ignore_action = {0};
@@ -101,7 +100,7 @@ void smallsh() {
     char *commands[MAX_NUM_ARGS];
     int count = 0;
 
-    // initialize commands array
+    // initialize command array
     for (i = 0; i < MAX_NUM_ARGS; i++) {
       commands[i] = NULL;
     }
@@ -110,15 +109,15 @@ void smallsh() {
     while (p != NULL) {
 
       // receive $$
-      if (strcmp(p, "$$") == 0) {
-        char shell_pid_buffer[sizeof(shell_pid) * 4 + 1];
-        memset(shell_pid_buffer, '\0', sizeof(shell_pid) * 4 + 1);
-        sprintf(shell_pid_buffer, "%d", shell_pid);
-        commands[count++] = shell_pid_buffer;
-      }
+      /*if (strcmp(p, "$$") == 0) {*/
+        /*char shell_pid_buffer[sizeof(shell_pid) * 4 + 1];*/
+        /*memset(shell_pid_buffer, '\0', sizeof(shell_pid) * 4 + 1);*/
+        /*sprintf(shell_pid_buffer, "%d", shell_pid);*/
+        /*commands[count++] = shell_pid_buffer;*/
+      /*}*/
 
       // receive < for input file
-      else if (strcmp(p, "<") == 0) {
+      if (strcmp(p, "<") == 0) {
         p = strtok(NULL, " ");
         input_file = p;
         redirect_input = 1;
@@ -136,19 +135,34 @@ void smallsh() {
         /*fflush(stdout);*/
       }
 
-      // receive & for running process in background
-      else if (strcmp(p, "&") == 0) {
-        if (!foreground_only_mode_on) {
-          is_background_process = 1;
-        }
-      }
-
-      // if current word is a special symbol
       else {
+
+        //perform $$ expansion to shell pid
+        char shell_pid_buffer[sizeof(shell_pid) * 4 + 1];
+        memset(shell_pid_buffer, '\0', sizeof(shell_pid) * 4 + 1);
+        sprintf(shell_pid_buffer, "%d", shell_pid);
+        p=str_replace("$$", shell_pid_buffer, p);
+
+        /*printf("Your command is %s\n", p);*/
+        /*fflush(stdout);*/
+        
+        //add command to command array
         commands[count++] = p;
       }
-      // keep parsing command
+      // keep parsing
       p = strtok(NULL, " ");
+    }
+      
+    // check if & is at the end of command
+    // if there is, turn on background flag 
+    // as long as foreground only mode is off
+    if(strcmp(commands[count-1], "&")==0){
+      printf("Found &\n");
+      if(!foreground_only_mode_on){
+        is_background_process = 1;
+      }
+      //remove & symbol from command
+      commands[count-1] = NULL;
     }
 
     // if user uses cd
@@ -185,7 +199,7 @@ void smallsh() {
       sigaction(SIGTSTP, &ignore_action, NULL);
 
       // set foreground process to catch SIGINT
-      if (!is_background_process || foreground_only_mode_on) {
+      if (!is_background_process) {
         sigaction(SIGINT, &SIGINT_action, NULL);
       }
 
@@ -226,12 +240,12 @@ void smallsh() {
         int dev_NULL = open("/dev/null", O_WRONLY);
 
         if (dev_NULL == -1) {
-          perror("failed to open dev/null as source\n");
+          perror("failed to open dev/null as source");
           exit(1);
         }
 
         if (dup2(dev_NULL, STDIN_FILENO) == -1) {
-          perror("unable to redirect input to dev/null\n");
+          perror("unable to redirect input to dev/null");
           exit(1);
         }
       }
@@ -241,30 +255,29 @@ void smallsh() {
         int dev_NULL = open("/dev/null", O_WRONLY);
 
         if (dev_NULL == -1) {
-          perror("failed to open dev/null as target\n");
+          perror("failed to open dev/null as target");
           exit(1);
         }
 
         if (dup2(dev_NULL, STDOUT_FILENO) == -1) {
-          perror("unable to redirect output to dev/null\n");
+          perror("unable to redirect output to dev/null");
           exit(1);
         }
       }
 
       // execute none builtin command
       int exec_res = execvp(commands[0], commands);
-      // if command cannot be found or failed to excute
-      //
-      printf("child process exec return: %d", exec_res);
-      fflush(stdout);
-      childExitStatus = 1;
-      exit(1);
+      // if command failed to excute
+      if (exec_res == -1) {
+        perror("command failed to execute");
+        exit(1);
+      }
     }
 
     // in parent
     else {
-      // if child process is background, track it by adding its pid to an array  
-      if (is_background_process && !foreground_only_mode_on) {
+      // if child process is background, track it by adding its pid to an array
+      if (is_background_process) {
         background_children_array[background_children_array_size++] = spawnPid;
         background_children_count++;
         printf("background pid is %d\n", spawnPid);
@@ -275,12 +288,9 @@ void smallsh() {
       else {
 
         pid_t child_pid = waitpid(spawnPid, &childExitStatus, 0);
-
-        // print exit status or termination status
-        /*if (WIFEXITED(childExitStatus)) {*/
-        /*printf("exit value %d\n", WEXITSTATUS(childExitStatus));*/
-        /*fflush(stdout);*/
-        /*}*/
+        
+        // check to see if it was terminated by a signal 
+        // and print out the signal number
         if (WIFSIGNALED(childExitStatus)) {
           printf("terminated by signal %d\n", WTERMSIG(childExitStatus));
           fflush(stdout);
@@ -310,7 +320,7 @@ void check_background_processes(pid_t *background_children_array,
   int status = -5;
   if (background_children_count > 0) {
 
-    //for each child process in the array, check if it's terminated
+    // for each child process in the array, check if it's terminated
     for (i = 0; i < background_children_array_size; i++) {
       pid = waitpid(background_children_array[i], &status, WNOHANG);
       // if child has terminated, check their exit status
@@ -330,7 +340,7 @@ void check_background_processes(pid_t *background_children_array,
         /*printf("Currently there are  %d background children \n",*/
         /**background_children_count);*/
 
-        //update exit status in shell
+        // update exit status in shell
         *childExitStatus = status;
       }
     }
@@ -341,18 +351,51 @@ void check_background_processes(pid_t *background_children_array,
 void catch_SIGTSTP(int signo) {
   char *message1 = "\nEntering foreground-only mode (& is now ignored)\n";
   char *message2 = "\nExiting foreground-only mode (& is now in effect)\n";
+  /*if (!foreground_only_mode_on) {*/
+  /*write(STDOUT_FILENO, message1, 50);*/
+  /*} else {*/
+  /*write(STDOUT_FILENO, message2, 51);*/
+  /*}*/
+
   if (!foreground_only_mode_on) {
-    write(STDOUT_FILENO, message1, 50);
+    printf("%s", message1);
   } else {
-    write(STDOUT_FILENO, message2, 51);
+    printf("%s", message2);
+  }
+  fflush(stdout);
+  foreground_only_mode_on = !foreground_only_mode_on;
+}
+
+
+//string replace 
+//reference: https://www.binarytides.com/str_replace-for-c/
+
+char * str_replace(char *search_term, char * replace_term, char * string){
+  char * p = NULL, *old_string = NULL, *new_string = NULL;
+
+  int c = 0, search_size;
+
+  search_size = strlen(search_term);
+  
+  for(p = strstr(string, search_term); p != NULL; p=strstr(p+search_size, search_term)){
+    c++;
+  }
+    
+  c = (strlen(replace_term)-search_size)*c + strlen(string);
+  
+  new_string = malloc(c);
+
+  strcpy(new_string, "");
+
+  old_string = string;
+
+  for(p = strstr(string, search_term); p != NULL; p = strstr(p+search_size, search_term)){
+    strncpy(new_string+strlen(new_string), old_string, p-old_string);
+    strcpy(new_string + strlen(new_string), replace_term);
+    old_string=p+search_size;
   }
 
+  strcpy(new_string+strlen(new_string), old_string);
 
-  /*if (!foreground_only_mode_on) {*/
-    /*printf("%s",message1);*/
-  /*} else {*/
-    /*printf("%s",message2);*/
-  /*}*/
-  /*fflush(stdout);*/
-  foreground_only_mode_on = !foreground_only_mode_on;
+  return new_string;
 }

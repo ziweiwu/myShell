@@ -17,8 +17,10 @@
 
 #define MAX_COMMAND_LENGTH 2050
 #define MAX_NUM_ARGS 512
+#define SHELL_PID getpid()
 
 int is_blank_line(char *, int);
+char * str_replace(char *, char *, char *);
 void check_background_processes(pid_t *, int, int *, int *);
 void catch_SIGTSTP(int);
   
