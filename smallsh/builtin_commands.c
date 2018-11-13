@@ -49,10 +49,10 @@ void exit_command(pid_t* child_pid_array, int child_pid_array_size) {
   
   //ensure no background processes are left running  
   for (i = 0; i < child_pid_array_size; i++) {
-    printf("kill process %d\n", *(child_pid_array + i));
+    /*printf("kill process %d\n", *(child_pid_array + i));*/
     kill(*(child_pid_array + i), 15);
   }
-  printf("All background processes are killed\n");
-  printf("Smallsh is exiting\n");
+  /*printf("All background processes are killed\n");*/
+  /*printf("Smallsh is exiting\n");*/
   exit(0);
 }

@@ -17,7 +17,7 @@ void smallsh() {
   int i = 0;
   int background_children_count = 0;
   int background_children_array_size = 0;
-
+  int foreground_only_mode_on = 0;
   // set up signals
   struct sigaction SIGINT_action = {0}, SIGTSTP_action = {0},
                    ignore_action = {0};
@@ -252,17 +252,19 @@ void smallsh() {
       }
 
       // execute none builtin command
-      execvp(commands[0], commands);
+      int exec_res = execvp(commands[0], commands);
       // if command cannot be found or failed to excute
-      printf("%s: cannot be found or failed to executed.\n", commands[0]);
+      //
+      printf("child process exec return: %d", exec_res);
       fflush(stdout);
       childExitStatus = 1;
+      exit(1);
     }
 
     // in parent
     else {
       // if child process is background, track it by adding its pid to an array  
-      if (is_background_process) {
+      if (is_background_process && !foreground_only_mode_on) {
         background_children_array[background_children_array_size++] = spawnPid;
         background_children_count++;
         printf("background pid is %d\n", spawnPid);
@@ -344,6 +346,13 @@ void catch_SIGTSTP(int signo) {
   } else {
     write(STDOUT_FILENO, message2, 51);
   }
-  fflush(stdout);
+
+
+  /*if (!foreground_only_mode_on) {*/
+    /*printf("%s",message1);*/
+  /*} else {*/
+    /*printf("%s",message2);*/
+  /*}*/
+  /*fflush(stdout);*/
   foreground_only_mode_on = !foreground_only_mode_on;
 }
