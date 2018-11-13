@@ -3,7 +3,8 @@
 //
 #include "builtin_commands.h"
 
-void cd_command(char* path, int* exit_status) {
+// builtin: change directory given a directory path
+void cd_command(char* path) {
   int ret;
   // if no path is given, cd to home dir
   if (!path) {
@@ -14,19 +15,15 @@ void cd_command(char* path, int* exit_status) {
     ret = chdir(path);
   }
 
-  // set exit status based on ret
+  // if cd failed
   if (ret==-1) {
     perror("cd command failed");
-    *exit_status = 1;
-  } else {
-    *exit_status = 0;
   }
-  return;
 }
 
-// print the exit or termination status  
+// builtin: print the exit or termination status of last foreground process 
 void status_command(int *exit_status) {
-  int status; 
+  int status;
   //if process is exited
   if (WIFEXITED(*exit_status)) {
     status = WEXITSTATUS(*exit_status);
@@ -39,22 +36,14 @@ void status_command(int *exit_status) {
     printf("terminated by signal %d\n", status);
     fflush(stdout);
   }
-
-  //set exit status for status command itself 
-  *exit_status = 0;
-  return;
 }
 
-// exit the shell
+// builtin: exit the shell
 void exit_command(pid_t* child_pid_array, int child_pid_array_size) {
   int i;
-  
   //ensure no background processes are left running  
   for (i = 0; i < child_pid_array_size; i++) {
-    /*printf("kill process %d\n", *(child_pid_array + i));*/
     kill(*(child_pid_array + i), 15);
   }
-  /*printf("All background processes are killed\n");*/
-  /*printf("Smallsh is exiting\n");*/
   exit(0);
 }

@@ -14,7 +14,7 @@
 
 int get_status(int);
 
-void cd_command(char *, int *);
+void cd_command(char *);
 void status_command(int *);
 void exit_command(pid_t *, int);
 

@@ -21,7 +21,7 @@
 
 int is_blank_line(char *, int);
 char * str_replace(char *, char *, char *);
-void check_background_processes(pid_t *, int, int *, int *);
+void check_background_processes(pid_t *, int, int *);
 void catch_SIGTSTP(int);
   
 void smallsh();

@@ -9,9 +9,8 @@ int foreground_only_mode_on = 0;
 void smallsh() {
 
   pid_t shell_pid = SHELL_PID;
-
-  /*printf("Smallsh running\n");*/
-  /*printf("Smallsh pid is %d\n", shell_pid);*/
+  pid_t spawn_pid = -5;
+  int exit_status = 0;
 
   // set up an array to save child process PID
   pid_t background_children_array[10000];
@@ -42,8 +41,6 @@ void smallsh() {
   // parent process to use handler to SIGTSTP
   sigaction(SIGTSTP, &SIGTSTP_action, NULL);
 
-  pid_t spawn_pid = -5;
-  int exit_status = 0;
 
   while (1) {
 
@@ -59,7 +56,7 @@ void smallsh() {
     // check if there are background children that has terminated
     check_background_processes(background_children_array,
                                background_children_array_size,
-                               &background_children_count, &exit_status);
+                               &background_children_count);
 
     // set up  main shell to ignore SIGINT
     // save current standard input and standard out
@@ -85,11 +82,6 @@ void smallsh() {
       }
     }
     buffer[strlen(buffer) - 1] = '\0';
-
-    // check if there are background children that has terminated
-    check_background_processes(background_children_array,
-                               background_children_array_size,
-                               &background_children_count, &exit_status);
 
     // detect empty line or blank line
     if (strlen(buffer) == 0 || is_blank_line(buffer, num_characters_entered)) {
@@ -127,9 +119,6 @@ void smallsh() {
         p = strtok(NULL, " ");
         input_file = p;
         redirect_input = 1;
-        /*printf("input target is %s\n", p);*/
-        /*fflush(stdout);*/
-
       }
 
       // receive > for output file
@@ -137,8 +126,6 @@ void smallsh() {
         p = strtok(NULL, " ");
         output_file = p;
         redirect_output = 1;
-        /*printf("output target is %s\n", p);*/
-        /*fflush(stdout);*/
       } else {
 
         // perform $$ expansion to shell pid
@@ -170,7 +157,7 @@ void smallsh() {
 
     // if user uses cd
     if (strcmp(commands[0], "cd") == 0) {
-      cd_command(commands[1], &exit_status);
+      cd_command(commands[1]);
       continue;
     }
 
@@ -183,7 +170,6 @@ void smallsh() {
     // if user uses exit
     if (strcmp(commands[0], "exit") == 0) {
       exit_command(background_children_array, background_children_array_size);
-      break;
     }
 
     // fork a child process for exec the command
@@ -191,8 +177,7 @@ void smallsh() {
 
     // fork failed
     if (spawn_pid == -1) {
-      perror("rrror forking a child process");
-      exit_status = 1;
+      perror("error forking a child process");
     }
 
     // in child process
@@ -273,6 +258,7 @@ void smallsh() {
 
       // execute none-builtin command
       int exec_res = execvp(commands[0], commands);
+
       // if command failed to excute
       if (exec_res == -1) {
         printf("%s: no such file or directory\n", commands[0]);
@@ -297,7 +283,7 @@ void smallsh() {
         pid_t child_pid = waitpid(spawn_pid, &exit_status, 0);
 
         // check to see if it was terminated by a signal
-        // and print out the signal number
+        / and print out the signal number
         if (WIFSIGNALED(exit_status)) {
           printf("terminated by signal %d\n", WTERMSIG(exit_status));
           fflush(stdout);
@@ -321,8 +307,7 @@ int is_blank_line(char *buffer, int len) {
 /*check if any background children has terminated */
 void check_background_processes(pid_t *background_children_array,
                                 int background_children_array_size,
-                                int *background_children_count,
-                                int *exit_status) {
+                                int *background_children_count) {
   int i, pid;
   int status = -5;
   if (background_children_count > 0) {
@@ -344,11 +329,6 @@ void check_background_processes(pid_t *background_children_array,
           fflush(stdout);
         }
         (*background_children_count)--;
-        /*printf("Currently there are  %d background children \n",*/
-        /**background_children_count);*/
-
-        // update exit status in shell
-        *exit_status = status;
       }
     }
   }
@@ -369,7 +349,7 @@ void catch_SIGTSTP(int signo) {
   foreground_only_mode_on = !foreground_only_mode_on;
 }
 
-// string replace
+// replace a substring in a string given a search term and a place term
 // reference: https://www.binarytides.com/str_replace-for-c/
 char *str_replace(char *search_term, char *replace_term, char *string) {
   char *p = NULL, *old_string = NULL, *new_string = NULL;
