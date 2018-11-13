@@ -1,5 +1,5 @@
 PRE-SCRIPT INFO
-  Grading Script PID: 10407
+  Grading Script PID: 7205
   Note: your smallsh will report a different PID when evaluating $$
 : BEGINNING TEST SCRIPT
 : 
@@ -9,11 +9,7 @@ PRE-SCRIPT INFO
 : 
 : --------------------
 : ls (10 points for returning dir contents)
-: $$$$
-4246
-553255325532
-5532me5532
-builtin_commands.c
+: builtin_commands.c
 builtin_commands.h
 CMakeCache.txt
 CMakeFiles
@@ -25,11 +21,7 @@ junk
 junk2
 main.c
 Makefile
-my$$
-my4895
-mydirction$$
 mytestresults
-new
 numbers
 p3testscript
 README.md
@@ -38,7 +30,6 @@ smallsh.c
 smallsh.h
 sort
 test
-test5354
 : 
 : 
 : --------------------
@@ -47,11 +38,7 @@ test5354
 : 
 : --------------------
 : cat junk (15 points for correctly returning contents of junk)
-: $$$$
-4246
-553255325532
-5532me5532
-builtin_commands.c
+: builtin_commands.c
 builtin_commands.h
 CMakeCache.txt
 CMakeFiles
@@ -63,11 +50,7 @@ junk
 junk2
 main.c
 Makefile
-my$$
-my4895
-mydirction$$
 mytestresults
-new
 numbers
 p3testscript
 README.md
@@ -76,17 +59,16 @@ smallsh.c
 smallsh.h
 sort
 test
-test5354
 : 
 : 
 : --------------------
 : wc in junk (15 points for returning correct numbers from wc)
-:  30  30 309
+:  21  21 237
 : 
 : 
 : --------------------
 : wc in junk out junk2; cat junk2 (10 points for returning correct numbers from wc)
-: :  30  30 309
+: :  21  21 237
 : 
 : 
 : --------------------
@@ -106,24 +88,26 @@ test5354
 : 
 : --------------------
 : sleep 100 background (10 points for returning process ID of sleeper)
-: background pid is 10458
+: background pid is 7662
 : 
 : 
 : --------------------
 : pkill -signal SIGTERM sleep (10 points for pid of killed process, 10 points for signal)
 : (Ignore message about Operation Not Permitted)
-: background pid 10458 is done: terminated by signal 15
+: pkill: killing pid 17838 failed: Operation not permitted
+pkill: killing pid 27613 failed: Operation not permitted
+background pid 7662 is done: terminated by signal 15
 : 
 : 
 : --------------------
 : sleep 1 background (10 pts for pid of bg ps when done, 10 for exit value)
-: background pid is 10469
+: background pid is 8507
 : : 
-background pid 10469 is done: exit value 0
+background pid 8507 is done: exit value 0
 : 
 : --------------------
 : pwd
-: /home/vagrant/smallsh
+: /nfs/stak/users/wuzi/smallsh
 : 
 : 
 : --------------------
@@ -132,26 +116,26 @@ background pid 10469 is done: exit value 0
 : 
 : --------------------
 : pwd (10 points for being in the HOME dir)
-: /home/vagrant
+: /nfs/stak/users/wuzi
 : 
 : 
 : --------------------
-: mkdir testdir10408
+: mkdir testdir7224
 : : 
 : 
 : --------------------
-: cd testdir10408
+: cd testdir7224
 : : 
 : 
 : --------------------
 : pwd (5 points for being in the newly created dir)
-: /home/vagrant/testdir10408
+: /nfs/stak/users/wuzi/testdir7224
 : --------------------
 : Testing foreground-only mode (20 points for entry & exit text AND ~5 seconds between times)
 : 
 Entering foreground-only mode (& is now ignored)
-: Tue Nov 13 21:03:14 UTC 2018
-: : Tue Nov 13 21:03:19 UTC 2018
+: Tue Nov 13 13:06:25 PST 2018
+: : Tue Nov 13 13:06:30 PST 2018
 : 
 Exiting foreground-only mode
 : 

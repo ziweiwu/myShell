@@ -1,3 +1,0 @@
-make clean
-make
-./p3testscript 2>&1
