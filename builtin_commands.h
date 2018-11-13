@@ -1,6 +1,13 @@
-//
-// Created by ZIWEIWU on 2018-11-08.
-//
+/**
+ * Filename:    builtin_commands.h
+ * Filetype:    header 
+ * Author:      Wu, Ziwei
+ * Class:       CS371
+ * Program:     3
+ * Description: contains three builtin commands function 
+ *              for smallsh including cd, status, and exit
+ *              commands
+ */
 
 #ifndef BUILTIN_COMMANDS_H
 #define BUILTIN_COMMANDS_H
@@ -11,8 +18,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <sys/wait.h>
-
-int get_status(int);
 
 void cd_command(char *);
 void status_command(int *);

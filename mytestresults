@@ -1,5 +1,5 @@
 PRE-SCRIPT INFO
-  Grading Script PID: 6465
+  Grading Script PID: 10407
   Note: your smallsh will report a different PID when evaluating $$
 : BEGINNING TEST SCRIPT
 : 
@@ -106,24 +106,24 @@ test5354
 : 
 : --------------------
 : sleep 100 background (10 points for returning process ID of sleeper)
-: background pid is 6516
+: background pid is 10458
 : 
 : 
 : --------------------
 : pkill -signal SIGTERM sleep (10 points for pid of killed process, 10 points for signal)
 : (Ignore message about Operation Not Permitted)
-: background pid 6516 is done: terminated by signal 15
+: background pid 10458 is done: terminated by signal 15
 : 
 : 
 : --------------------
 : sleep 1 background (10 pts for pid of bg ps when done, 10 for exit value)
-: background pid is 6527
+: background pid is 10469
 : : 
-background pid 6527 is done: exit value 0
+background pid 10469 is done: exit value 0
 : 
 : --------------------
 : pwd
-: /home/vagrant/smallsh/smallsh
+: /home/vagrant/smallsh
 : 
 : 
 : --------------------
@@ -136,22 +136,22 @@ background pid 6527 is done: exit value 0
 : 
 : 
 : --------------------
-: mkdir testdir6466
+: mkdir testdir10408
 : : 
 : 
 : --------------------
-: cd testdir6466
+: cd testdir10408
 : : 
 : 
 : --------------------
 : pwd (5 points for being in the newly created dir)
-: /home/vagrant/testdir6466
+: /home/vagrant/testdir10408
 : --------------------
 : Testing foreground-only mode (20 points for entry & exit text AND ~5 seconds between times)
 : 
 Entering foreground-only mode (& is now ignored)
-: Tue Nov 13 14:49:05 UTC 2018
-: : Tue Nov 13 14:49:10 UTC 2018
+: Tue Nov 13 21:03:14 UTC 2018
+: : Tue Nov 13 21:03:19 UTC 2018
 : 
 Exiting foreground-only mode
 : 

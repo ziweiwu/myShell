@@ -1,9 +1,19 @@
-//
-// Created by ZIWEIWU on 2018-11-08.
-//
+/**
+ * Filename:    builtin_commands.c
+ * Filetype:    source 
+ * Author:      Wu, Ziwei
+ * Class:       CS371
+ * Program:     3
+ * Description: contains three builtin commands function 
+ *              for smallsh including cd, status, and exit
+ *              commands
+ */
+
 #include "builtin_commands.h"
 
-// builtin: change directory given a directory path
+/**
+ * change directory given a directory path
+ */
 void cd_command(char* path) {
   int ret;
   // if no path is given, cd to home dir
@@ -21,7 +31,9 @@ void cd_command(char* path) {
   }
 }
 
-// builtin: print the exit or termination status of last foreground process 
+/*
+ * print the exit or termination status of last foreground process 
+ */
 void status_command(int *exit_status) {
   int status;
   //if process is exited
@@ -38,7 +50,9 @@ void status_command(int *exit_status) {
   }
 }
 
-// builtin: exit the shell
+/*
+*perform cleanup of leftover process and exit the shell
+*/
 void exit_command(pid_t* child_pid_array, int child_pid_array_size) {
   int i;
   //ensure no background processes are left running  
