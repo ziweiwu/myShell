@@ -3,7 +3,7 @@
 //
 #include "builtin_commands.h"
 
-void cd_command(char* path, int* childExitStatus) {
+void cd_command(char* path, int* exit_status) {
   int ret;
   // if no path is given, cd to home dir
   if (!path) {
@@ -17,30 +17,32 @@ void cd_command(char* path, int* childExitStatus) {
   // set exit status based on ret
   if (ret==-1) {
     perror("cd command failed");
-    *childExitStatus = 1;
+    *exit_status = 1;
   } else {
-    *childExitStatus = 0;
+    *exit_status = 0;
   }
+  return;
 }
 
-// return the exit status  
-int get_status(int status) {
+// print the exit or termination status  
+void status_command(int *exit_status) {
+  int status; 
   //if process is exited
-  if (WIFEXITED(status)) {
-    status = WEXITSTATUS(status);
+  if (WIFEXITED(*exit_status)) {
+    status = WEXITSTATUS(*exit_status);
+    printf("exit value %d\n", status);
+    fflush(stdout);
   }
   //if process is terminated by signal
-  if (WIFSIGNALED(status)) {
-    status = WTERMSIG(status);
+  if (WIFSIGNALED(*exit_status)) {
+    status = WTERMSIG(*exit_status);
+    printf("terminated by signal %d\n", status);
+    fflush(stdout);
   }
-  return status;
-}
 
-// print out the exit status
-void status_command(int* status) {
-  printf("exit status: %d\n", get_status(*status));
-  fflush(stdout);
-  *status = 0;
+  //set exit status for status command itself 
+  *exit_status = 0;
+  return;
 }
 
 // exit the shell
