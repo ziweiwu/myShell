@@ -1,6 +1,6 @@
 /**
  * Filename:    smallsh.c
- * Filetype:    source 
+ * Filetype:    source
  * Author:      Wu, Ziwei
  * Class:       CS371
  * Program:     3
@@ -42,6 +42,11 @@ void smallsh() {
   int background_children_count = 0;
   int background_children_array_size = 0;
 
+  // intialize background children array
+  for(i = 0; i < MAX_CHILDREN_ARRAY_SIZE; i++){
+    background_children_array[i] = 0;
+  }
+
   // set up signals handling options
   struct sigaction SIGINT_action = {0}, SIGTSTP_action = {0},
                    ignore_action = {0};
@@ -49,7 +54,7 @@ void smallsh() {
   // SIGINT
   SIGINT_action.sa_handler = SIG_DFL;
   sigfillset(&SIGINT_action.sa_mask);
-  SIGINT_action.sa_flags = SA_RESTART; //prevent interrupt system call
+  SIGINT_action.sa_flags = SA_RESTART;  // prevent interrupt system call
 
   // SIGTSTP
   SIGTSTP_action.sa_handler = catch_SIGTSTP;
@@ -310,7 +315,6 @@ int is_blank_line(char *buffer, int len) {
   return 1;
 }
 
-
 /**
  * check for the termination/exit status of stored background children process
  * and if any terminates/exit, print out the termination/exit signals
@@ -324,29 +328,37 @@ void check_background_processes(pid_t *background_children_array,
 
     // for each child process in the array, check if it's terminated
     for (i = 0; i < background_children_array_size; i++) {
-      pid = waitpid(background_children_array[i], &status, WNOHANG);
-      // if child has terminated, check their exit status
-      if (pid > 0) {
-        if (WIFEXITED(status)) {
-          status = WEXITSTATUS(status);
-          printf("background pid %d is done: exit value %d\n", pid, status);
-          fflush(stdout);
+      // if background process pid is 0, skip checking it
+      if (background_children_array[i] == 0) {
+        continue;
+      } else {
+
+        pid = waitpid(background_children_array[i], &status, WNOHANG);
+
+        // if child has terminated (pid > 0), check their exit/termination status
+        if (pid > 0) {
+          if (WIFEXITED(status)) {
+            status = WEXITSTATUS(status);
+            printf("background pid %d is done: exit value %d\n", pid, status);
+            fflush(stdout);
+          }
+          if (WIFSIGNALED(status)) {
+            status = WTERMSIG(status);
+            printf("background pid %d is done: terminated by signal %d\n", pid,
+                   status);
+            fflush(stdout);
+          }
+          // set pid to 0 in background children array to indicate that the process has terminated
+          background_children_array[i] = 0;
+          (*background_children_count)--;
         }
-        if (WIFSIGNALED(status)) {
-          status = WTERMSIG(status);
-          printf("background pid %d is done: terminated by signal %d\n", pid,
-                 status);
-          fflush(stdout);
-        }
-        (*background_children_count)--;
       }
     }
   }
 }
 
-
 /**
- * signal catcher for SIGTSTP, performs the foreground only mode switching 
+ * signal catcher for SIGTSTP, performs the foreground only mode switching
  */
 void catch_SIGTSTP(int signo) {
   char *message1 = "\nEntering foreground-only mode (& is now ignored)\n";
@@ -362,7 +374,7 @@ void catch_SIGTSTP(int signo) {
   foreground_only_mode_on = !foreground_only_mode_on;
 }
 
-/** 
+/**
  * replace a substring in a string given a search term and a place term
  * reference: https://www.binarytides.com/str_replace-for-c/
  */
