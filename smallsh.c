@@ -304,7 +304,7 @@ void smallsh() {
 
 /**
  * check if a string is a blank line
- * */
+ */
 int is_blank_line(char *buffer, int len) {
   int i;
   for (i = 0; i < len - 1; i++) {
@@ -335,20 +335,22 @@ void check_background_processes(pid_t *background_children_array,
 
         pid = waitpid(background_children_array[i], &status, WNOHANG);
 
-        // if child has terminated (pid > 0), check their exit/termination status
+        // if child has terminated (indicated by pid > 0), check their exit/termination status
         if (pid > 0) {
+          //if child was exited
           if (WIFEXITED(status)) {
             status = WEXITSTATUS(status);
             printf("background pid %d is done: exit value %d\n", pid, status);
             fflush(stdout);
           }
+          //if child was terminated
           if (WIFSIGNALED(status)) {
             status = WTERMSIG(status);
             printf("background pid %d is done: terminated by signal %d\n", pid,
                    status);
             fflush(stdout);
           }
-          // set pid to 0 in background children array to indicate that the process has terminated
+          // set pid to 0 indicate that child has exited/terminated
           background_children_array[i] = 0;
           (*background_children_count)--;
         }
@@ -356,6 +358,7 @@ void check_background_processes(pid_t *background_children_array,
     }
   }
 }
+
 
 /**
  * signal catcher for SIGTSTP, performs the foreground only mode switching
@@ -373,6 +376,7 @@ void catch_SIGTSTP(int signo) {
   }
   foreground_only_mode_on = !foreground_only_mode_on;
 }
+
 
 /**
  * replace a substring in a string given a search term and a place term
