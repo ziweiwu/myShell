@@ -16,7 +16,7 @@
 #include "smallsh.h"
 
 // Constants
-static const int MAX_INPUT_BUFFER_LENGTH = 5048;
+static const int MAX_INPUT_BUFFER_LENGTH = 2048;
 static const int MAX_NUM_ARGUMENTS = 512;
 static const int MAX_BACKGROUND_CHILDREN_ARRAY_SIZE = 1000;
 
