@@ -95,7 +95,8 @@ void smallsh() {
     // User input loop
     while (1) {
 
-      printf(": ");  // Print the prompt
+      // print the prompt
+      printf(": ");
       fflush(stdout);
 
       // Get user input
@@ -195,7 +196,6 @@ void smallsh() {
     if (strcmp(commands_array[0], "exit") == 0) {
       exit_command(background_children_array,
                    current_background_children_array_size);
-      break;
     }
 
     // If user uses a none builtin command
@@ -245,17 +245,16 @@ void smallsh() {
         // Open the target file descriptor (create it if it doesn't exit)
         target_FD = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 
-        if (source_FD == -1) {
-          if (target_FD == -1) {
-            printf("cannot open %s for output\n", input_file);
-            fflush(stdout);
-          }
-          if (dup2(target_FD, STDOUT_FILENO) == -1) {
-            perror("unable to redirect target file");
-            exit(1);
-          }
+        if (target_FD == -1) {
+          printf("cannot open %s for output\n", input_file);
+          fflush(stdout);
+        }
+        if (dup2(target_FD, STDOUT_FILENO) == -1) {
+          perror("unable to redirect target file");
+          exit(1);
         }
       }
+
       // Set dev/null as input for background child without an input
       if (is_background_process && !redirect_input) {
         int dev_NULL = open("/dev/null", O_WRONLY);
