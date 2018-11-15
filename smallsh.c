@@ -2,8 +2,6 @@
  * Filename:    smallsh.c
  * Filetype:    source
  * Author:      Wu, Ziwei
- * Class:       CS344
- * Program:     3
  * Description: Defines smallsh function which starts up the shell,
  *              and execute shell functionalities, including
  *              three builtin commands cd, status, and exit.
