@@ -1,15 +1,13 @@
 /**
  * Filename:    main.c
- * Filetype:    source 
+ * Filetype:    source
  * Author:      Wu, Ziwei
- * Class:       CS371
- * Program:     3
- * Description: the main program that starts smallsh progress
+ * Description: the main program which starts the smallsh program
  */
 
 #include "smallsh.h"
 
-int main(){
+int main() {
 
   smallsh();
 

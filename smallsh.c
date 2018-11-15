@@ -2,9 +2,9 @@
  * Filename:    smallsh.c
  * Filetype:    source
  * Author:      Wu, Ziwei
- * Class:       CS371
+ * Class:       CS344
  * Program:     3
- * Description: defines smallsh function which starts up the shell,
+ * Description: Defines smallsh function which starts up the shell,
  *              and execute shell functionalities, including
  *              three builtin commands cd, status, and exit.
  *              It also executes a shell command by using
@@ -15,228 +15,248 @@
 
 #include "smallsh.h"
 
-/**
- *Constants
- */
-static const int MAX_COMMAND_LENGTH = 5048;
-static const int MAX_NUM_ARGS = 512;
-static const int MAX_CHILDREN_ARRAY_SIZE = 1000;
+// Constants
+static const int MAX_INPUT_BUFFER_LENGTH = 5048;
+static const int MAX_NUM_ARGUMENTS = 512;
+static const int MAX_BACKGROUND_CHILDREN_ARRAY_SIZE = 1000;
 
-/**
- *Global flag
- */
+// Global flag for foreground only mode
 static int foreground_only_mode_on = 0;
 
 /**
- * start the smallsh process, parse and execute user commands
+ * Function: smallsh
+ * Description: start the shell program, ask for user input, and execute
+ *              either builtin commands cd, status, and exit, or
+ *              an external command by using fork and exec
+ * Return: None
  */
 void smallsh() {
 
-  const pid_t shell_pid = getpid();
-  pid_t spawn_pid = -5;
-  int exit_status = 0;
+  const pid_t shell_pid = getpid();  // Get pid of shell
+  pid_t child_process_pid = -5;
+  int exit_status = 0;  // Stores the exit status of children processes
 
-  // set up an array to save child process PID
-  pid_t background_children_array[MAX_CHILDREN_ARRAY_SIZE];
+  // Set up an array to store the PID of background children processes
+  pid_t background_children_array[MAX_BACKGROUND_CHILDREN_ARRAY_SIZE];
   int i = 0;
   int background_children_count = 0;
-  int background_children_array_size = 0;
-
-  // intialize background children array
-  for(i = 0; i < MAX_CHILDREN_ARRAY_SIZE; i++){
+  int current_background_children_array_size = 0;
+  for (i = 0; i < MAX_BACKGROUND_CHILDREN_ARRAY_SIZE; i++) {
     background_children_array[i] = 0;
   }
 
-  // set up signals handling options
+  // Initialize the signals handling actions
   struct sigaction SIGINT_action = {0}, SIGTSTP_action = {0},
                    ignore_action = {0};
 
-  // SIGINT
+  // Setup up SIGINT handler
   SIGINT_action.sa_handler = SIG_DFL;
   sigfillset(&SIGINT_action.sa_mask);
-  SIGINT_action.sa_flags = SA_RESTART;  // prevent interrupt system call
+  SIGINT_action.sa_flags = SA_RESTART;
 
-  // SIGTSTP
+  // Setup up SIGTSTP handler
   SIGTSTP_action.sa_handler = catch_SIGTSTP;
   sigfillset(&SIGTSTP_action.sa_mask);
   SIGTSTP_action.sa_flags = 0;
 
-  // ignore action
+  // Setup up ignore action handler
   ignore_action.sa_handler = SIG_IGN;
 
-  // parent process to ignore SIGINT
+  // Setup the parent process to ignore SIGINT
   sigaction(SIGINT, &ignore_action, NULL);
 
-  // parent process to use handler to SIGTSTP
+  // Setup the parent process to use handler for SIGTSTP
   sigaction(SIGTSTP, &SIGTSTP_action, NULL);
 
+  // main shell loop
   while (1) {
 
-    // fslags
+    // Initialize flags
     int is_background_process = 0;
     int redirect_input = 0;
     int redirect_output = 0;
 
-    // input file and output file
-    char *input_file = 0;
-    char *output_file = 0;
+    // Initialize input file and output file pointers
+    char *input_file = NULL;
+    char *output_file = NULL;
 
-    // check if there are background children that has terminated
-    check_background_processes(background_children_array,
-                               background_children_array_size,
-                               &background_children_count);
+    // Check if there are background children that has terminated
+    check_background_children_processes(background_children_array,
+                                        current_background_children_array_size,
+                                        &background_children_count);
 
-    // set up  main shell to ignore SIGINT
-    // save current standard input and standard out
-
-    char buffer[MAX_COMMAND_LENGTH];
+    // Initialize the user input buffer
+    char buffer[MAX_INPUT_BUFFER_LENGTH];
     char *buffer_ptr = buffer;
     int num_characters_entered = -5;
-    size_t buffer_len = MAX_COMMAND_LENGTH;
+    size_t buffer_len = MAX_INPUT_BUFFER_LENGTH;
     memset(buffer, '\0', buffer_len);
 
-    /*int n = read(STDOUT_FILENO, buffer, sizeof(buffer));*/
-
-    // get user input
+    // User input loop
     while (1) {
-      printf(": ");
-      // need to flush out unused output buffer before input
+
+      printf(": ");  // Print the prompt
       fflush(stdout);
+
+      // Get user input
       num_characters_entered = getline(&buffer_ptr, &buffer_len, stdin);
+
+      // If user input failed, ask for input again
       if (num_characters_entered == -1) {
         clearerr(stdin);
       } else {
         break;
       }
     }
-    buffer[strlen(buffer) - 1] = '\0';
+    buffer[strlen(buffer) - 1] = '\0';  // Remove \n from input
 
-    // detect empty line or blank line
+    // Detect if empty line or blank line are entered by the user
     if (strlen(buffer) == 0 || is_blank_line(buffer, num_characters_entered)) {
       continue;
     }
 
-    // detect comment line
+    // Detect if comment line is entered by the user
     if (buffer[0] == '#') {
       continue;
     }
 
+    // Initialize source and target file descriptors
     int source_FD = -5;
     int target_FD = -5;
-    int result = 0;
-    char *p = NULL;
-    char *commands[MAX_NUM_ARGS];
-    int count = 0;
 
-    // initialize command array
-    for (i = 0; i < MAX_NUM_ARGS; i++) {
-      commands[i] = NULL;
+    // Intialize variables for parsing the user input
+    char *word = NULL;
+    int command_count = 0;
+
+    // Initialize command array to store input command and its arguments
+    char *commands_array[MAX_NUM_ARGUMENTS];
+    for (i = 0; i < MAX_NUM_ARGUMENTS; i++) {
+      commands_array[i] = NULL;
     }
 
-    // parse command and arguments
-    p = strtok(buffer, " ");
-    while (p != NULL) {
+    // Loop to parse command and arguments
+    word = strtok(buffer, " ");
+    while (word != NULL) {
 
-      // receive < for input file
-      if (strcmp(p, "<") == 0) {
-        p = strtok(NULL, " ");
-        input_file = p;
+      // When receive "<", parse the input filename and set redirect input flag
+      if (strcmp(word, "<") == 0) {
+        word = strtok(NULL, " ");
+        input_file = word;
         redirect_input = 1;
-      }  // receive > for output file
-      else if (strcmp(p, ">") == 0) {
-        p = strtok(NULL, " ");
-        output_file = p;
+      }  // When receive ">", parse the output filename and set redirect output
+         // flag
+      else if (strcmp(word, ">") == 0) {
+        word = strtok(NULL, " ");
+        output_file = word;
         redirect_output = 1;
       } else {
-        // perform $$ expansion to shell pid
+
+        // Expand any "$$" substring in command to shell PID
         char shell_pid_buffer[sizeof(shell_pid) * 4 + 1];
         memset(shell_pid_buffer, '\0', sizeof(shell_pid) * 4 + 1);
         sprintf(shell_pid_buffer, "%d", shell_pid);
-        p = str_replace("$$", shell_pid_buffer, p);
+        word = replace_substring("$$", shell_pid_buffer, word);
 
-        /*printf("Your command is %s\n", p);*/
-        /*fflush(stdout);*/
-
-        // add command to commands array
-        commands[count] = p;
-        count++;
+        // Add the parsed command to the commands array
+        commands_array[command_count] = word;
+        command_count++;
       }
-      // keep parsing
-      p = strtok(NULL, " ");
+      // Kepp parsing the next word
+      word = strtok(NULL, " ");
     }
 
-    // check if & is at the end of command
-    // if there is, turn on background flag
-    // as long as foreground only mode is off
-    if (strcmp(commands[count - 1], "&") == 0) {
+    // Check there is "&" is at the end of command
+    if (strcmp(commands_array[command_count - 1], "&") == 0) {
+
+      // If foreground only mode is off, set background process flag on for
+      // child process
       if (!foreground_only_mode_on) {
         is_background_process = 1;
       }
-      // remove & symbol from command
-      commands[count - 1] = NULL;
+
+      // Remove & symbol from command
+      commands_array[command_count - 1] = NULL;
     }
 
-    // if user uses cd
-    if (strcmp(commands[0], "cd") == 0) {
-      cd_command(commands[1]);
+    // If user uses a builtin command
+    // When user uses "cd"
+    if (strcmp(commands_array[0], "cd") == 0) {
+      cd_command(commands_array[1]);
       continue;
     }
 
-    // if user uses status
-    if (strcmp(commands[0], "status") == 0) {
+    // When user uses "status"
+    if (strcmp(commands_array[0], "status") == 0) {
       status_command(&exit_status);
       continue;
     }
 
-    // if user uses exit
-    if (strcmp(commands[0], "exit") == 0) {
-      exit_command(background_children_array, background_children_array_size);
+    // When user uses "exit"
+    if (strcmp(commands_array[0], "exit") == 0) {
+      exit_command(background_children_array,
+                   current_background_children_array_size);
+      break;
     }
 
-    // fork a child process for exec the command
-    spawn_pid = fork();
+    // If user uses a none builtin command
+    // Fork a child process to execute the none builtin command
+    child_process_pid = fork();
 
-    // if fork failed
-    if (spawn_pid == -1) {
+    // If the child process failed to fork, repot an error
+    if (child_process_pid == -1) {
       perror("error forking a child process");
-    }  // in child process
-    else if (spawn_pid == 0) {
-      // set all children to ignore SIGTSTP
-      sigaction(SIGTSTP, &ignore_action, NULL);
+    }
+    // Child process forked succussfully
+    else if (child_process_pid == 0) {
 
-      // set foreground process to catch SIGINT
+      // Note: This scope of code is inside the child process
+      // It is important to exit child process whenever an error occurs
+      // Or else the child process may take over and become the main loop
+
+      // Setup signal handler for child process
+      // Ignore SIGTSTP (CTRL+Z)
+      sigaction(SIGTSTP, &ignore_action, NULL);
+      // Catch SIGINT (CTRL+C) if child is foreground
       if (!is_background_process) {
         sigaction(SIGINT, &SIGINT_action, NULL);
       }
 
-      // if redirect input needed, setup redirect input
+      // When input needs redirecting
       if (redirect_input) {
+        // Open the source file descriptor in read-only mode
         source_FD = open(input_file, O_RDONLY);
+
+        // If file descriptor failed to open, print an error
         if (source_FD == -1) {
           printf("cannot open %s for input\n", input_file);
           fflush(stdout);
           exit(1);
         }
+
+        // If redirect input to stdin failed, output an error
         if (dup2(source_FD, STDIN_FILENO) == -1) {
           perror("unable to redirect source file");
           exit(1);
         }
       }
 
-      // if redirect output needed, setup redirect output
+      // When output needs redirecting
       if (redirect_output) {
+        // Open the target file descriptor (create it if it doesn't exit)
         target_FD = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-        if (target_FD == -1) {
-          printf("cannot open %s for output\n", input_file);
-          fflush(stdout);
-        }
-        if (dup2(target_FD, STDOUT_FILENO) == -1) {
-          perror("unable to redirect target file");
-          exit(1);
+
+        if (source_FD == -1) {
+          if (target_FD == -1) {
+            printf("cannot open %s for output\n", input_file);
+            fflush(stdout);
+          }
+          if (dup2(target_FD, STDOUT_FILENO) == -1) {
+            perror("unable to redirect target file");
+            exit(1);
+          }
         }
       }
-
-      // set dev/null as input for background process w/o input
+      // Set dev/null as input for background child without an input
       if (is_background_process && !redirect_input) {
         int dev_NULL = open("/dev/null", O_WRONLY);
 
@@ -252,7 +272,7 @@ void smallsh() {
         }
       }
 
-      // set dev/null as input for background process w/o output
+      // Set dev/null as input for background child without an output
       if (is_background_process && !redirect_output) {
         int dev_NULL = open("/dev/null", O_WRONLY);
 
@@ -268,31 +288,39 @@ void smallsh() {
         }
       }
 
-      // execute none-builtin command
-      int exec_res = execvp(commands[0], commands);
+      // Execute the command
+      int exec_res = execvp(commands_array[0], commands_array);
 
-      // if command failed to excute
+      // Note: this section of code only execute if exec fails
+      // Print an error and exit if exec fail
       if (exec_res == -1) {
-        printf("%s: no such file or directory\n", commands[0]);
+        printf("%s: no such file or directory\n", commands_array[0]);
         fflush(stdout);
         exit(1);
       }
-    }  // in parent process
+    }  // In parent
     else {
-      // child process in background
+      // Note: this scope of code is in the parent process
+
+      // If the child process forked is a background process, add it to the
+      // background children array to track its PID
       if (is_background_process) {
-        background_children_array[background_children_array_size] = spawn_pid;
-        background_children_array_size++;
+        background_children_array[current_background_children_array_size] =
+            child_process_pid;
+        current_background_children_array_size++;
         background_children_count++;
-        printf("background pid is %d\n", spawn_pid);
+
+        // Print out the PID of background child to the user
+        printf("background pid is %d\n", child_process_pid);
         fflush(stdout);
-      }  // child process in foreground
+      }  // If the child process forked is a foreground process
       else {
 
-        pid_t child_pid = waitpid(spawn_pid, &exit_status, 0);
+        // Parent waits for the foreground child to exit or terminate
+        pid_t child_pid = waitpid(child_process_pid, &exit_status, 0);
 
-        // check to see if it was terminated by a signal
-        // and print out the signal number
+        // Parent checks to see if it was terminated by a signal
+        // and print out the signal number to the user
         if (WIFSIGNALED(exit_status)) {
           printf("terminated by signal %d\n", WTERMSIG(exit_status));
           fflush(stdout);
@@ -303,7 +331,12 @@ void smallsh() {
 }
 
 /**
- * check if a string is a blank line
+ * Function: is_blank_line
+ * Description: Check if a string is a blank line or empty line
+ * Param1: A buffer pointer
+ * Param2: Length of the buffer
+ * Return: 1 if buffer is a blank/empty line, 0 if buffer is not a blank/empty
+ * line
  */
 int is_blank_line(char *buffer, int len) {
   int i;
@@ -316,41 +349,60 @@ int is_blank_line(char *buffer, int len) {
 }
 
 /**
- * check for the termination/exit status of stored background children process
- * and if any terminates/exit, print out the termination/exit signals
+ * Function: check_background_children_processes
+ * Description: Check for the termination or exit status of an array of
+ *              background processes,if any process terminates or exits,
+ *              print out the exit statu or termination signal
+ * Param1: An array of process PID for background children processes
+ * Param2: Current size of the child processes PID array
+ * Param3: An int pointer storing the total number of background children
+ * processes
+ * Return: None
  */
-void check_background_processes(pid_t *background_children_array,
-                                int background_children_array_size,
-                                int *background_children_count) {
-  int i, pid;
+void check_background_children_processes(
+    pid_t *background_children_array,
+    int current_background_children_array_size,
+    int *background_children_count) {
+
+  int i = 0;
+  int pid = -5;
   int status = -5;
+
+  // If there is any current background children
   if (background_children_count > 0) {
 
     // for each child process in the array, check if it's terminated
-    for (i = 0; i < background_children_array_size; i++) {
-      // if background process pid is 0, skip checking it
+    for (i = 0; i < current_background_children_array_size; i++) {
+
+      // PID is 0 for array location without an background child
       if (background_children_array[i] == 0) {
         continue;
       } else {
 
+        // Note: WNOHANG argument allows checking for any exited or terminated
+        // child processes
         pid = waitpid(background_children_array[i], &status, WNOHANG);
 
-        // if child has terminated (indicated by pid > 0), check their exit/termination status
+        // If child has terminated (indicated by pid > 0), get their
+        // exit/termination status
         if (pid > 0) {
-          //if child was exited
+
+          // Child was exited
           if (WIFEXITED(status)) {
             status = WEXITSTATUS(status);
             printf("background pid %d is done: exit value %d\n", pid, status);
             fflush(stdout);
           }
-          //if child was terminated
+
+          // Child was terminated
           if (WIFSIGNALED(status)) {
             status = WTERMSIG(status);
             printf("background pid %d is done: terminated by signal %d\n", pid,
                    status);
             fflush(stdout);
           }
-          // set pid to 0 indicate that child has exited/terminated
+
+          // Set pid to 0 indicate such child PID has exited/terminated
           background_children_array[i] = 0;
           (*background_children_count)--;
         }
@@ -359,9 +411,11 @@ void check_background_processes(pid_t *background_children_array,
   }
 }
 
-
 /**
- * signal catcher for SIGTSTP, performs the foreground only mode switching
+ * Function: catch_SIGSTP
+ * Description: Catch SIGSTP sigal and switch foreground only mode on and off
+ * Param1: An integer signo
+ * Return: None
  */
 void catch_SIGTSTP(int signo) {
   char *message1 = "\nEntering foreground-only mode (& is now ignored)\n";
@@ -377,29 +431,37 @@ void catch_SIGTSTP(int signo) {
   foreground_only_mode_on = !foreground_only_mode_on;
 }
 
-
 /**
- * replace a substring in a string given a search term and a place term
- * reference: https://www.binarytides.com/str_replace-for-c/
+ * Function: replace_substring
+ * Description: Replace a substring in a string given a search term and a place
+ * term
+ * Param1: A char pointer to the target substring to replace
+ * Param2: A char pointer to the term which to replace the substring
+ * Param3: A char pointer to the target string to perform the substring
+ * replacement
+ * Return: None
+ * Reference: https://www.binarytides.com/replace_substring-for-c/
  */
-char *str_replace(char *search_term, char *replace_term, char *string) {
-  char *p = NULL;
+char *replace_substring(char *search_term, char *replace_term, char *string) {
+
+  char *pointer = NULL;
   char *old_string = NULL;
   char *new_string = NULL;
+
   int count = 0;
   int search_term_size = 0;
   int new_string_size = 0;
 
   search_term_size = strlen(search_term);
 
-  // count occurance of search term
-  p = strstr(string, search_term);
-  for (p = strstr(string, search_term); p != NULL;
-       p = strstr(p + search_term_size, search_term)) {
+  // Count occurance of search term
+  pointer = strstr(string, search_term);
+  for (pointer = strstr(string, search_term); pointer != NULL;
+       pointer = strstr(pointer + search_term_size, search_term)) {
     count++;
   }
 
-  // compute the size of new string, allocate the space for it
+  // Compute the size of new string, allocate the space for it
   new_string_size =
       (strlen(replace_term) - search_term_size) * count + strlen(string);
   new_string = malloc(new_string_size);
@@ -407,12 +469,12 @@ char *str_replace(char *search_term, char *replace_term, char *string) {
   strcpy(new_string, "");
   old_string = string;
 
-  // replacing search term with replace term, create the new string
-  for (p = strstr(string, search_term); p != NULL;
-       p = strstr(p + search_term_size, search_term)) {
-    strncpy(new_string + strlen(new_string), old_string, p - old_string);
+  // Replacing the substring with replace string
+  for (pointer = strstr(string, search_term); pointer != NULL;
+       pointer = strstr(pointer + search_term_size, search_term)) {
+    strncpy(new_string + strlen(new_string), old_string, pointer - old_string);
     strcpy(new_string + strlen(new_string), replace_term);
-    old_string = p + search_term_size;
+    old_string = pointer + search_term_size;
   }
 
   strcpy(new_string + strlen(new_string), old_string);

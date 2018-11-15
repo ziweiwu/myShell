@@ -1,9 +1,7 @@
 /**
  * Filename:    smallsh.h
- * Filetype:    header 
+ * Filetype:    header
  * Author:      Wu, Ziwei
- * Class:       CS371
- * Program:     3
  * Description: smallsh function which starts up the shell,
  *              and execute shell functionalities, including
  *              three builtin commands cd, status, and exit.
@@ -31,11 +29,11 @@
 //#define MAX_CHILDREN_ARRAY_SIZE 1000
 //#define SHELL_PID getpid()
 
-int is_blank_line(char *, int);
-char * str_replace(char *, char *, char *);
-void check_background_processes(pid_t *, int, int *);
-void catch_SIGTSTP(int);
-  
 void smallsh();
+
+int is_blank_line(char *, int);
+char *replace_substring(char *, char *, char *);
+void check_background_children_processes(pid_t *, int, int *);
+void catch_SIGTSTP(int);
 
 #endif  // PROJECT_SMALLSH_H

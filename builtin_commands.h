@@ -2,9 +2,7 @@
  * Filename:    builtin_commands.h
  * Filetype:    header 
  * Author:      Wu, Ziwei
- * Class:       CS371
- * Program:     3
- * Description: contains three builtin commands function 
+ * Description: Contains three builtin commands function 
  *              for smallsh including cd, status, and exit
  *              commands
  */
